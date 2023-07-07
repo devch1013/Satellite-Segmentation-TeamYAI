@@ -5,7 +5,7 @@ import torchvision.transforms as transforms
 from torch.utils.data import Dataset, DataLoader
 import cv2
 import pandas as pd
-from .utils import rle_decode
+from utils.utils import rle_decode
 
 
 class MyDataLoader:
@@ -84,8 +84,8 @@ class SatelliteDataset(Dataset):
 
     def __getitem__(self, idx):
         img_path = self.data.iloc[idx, 1]
-        image = cv2.imread(img_path)
-        print(img_path)
+        image = cv2.imread("data"+img_path[1:])
+        # print(img_path.replace(".","data"))
         image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
         
         if self.infer:
@@ -102,3 +102,9 @@ class SatelliteDataset(Dataset):
             mask = augmented['mask']
 
         return image, mask
+    
+    
+    
+if __name__ == "__main__":
+    image = cv2.imread("data/train_img/TRAIN_4390.png")
+    print(image)

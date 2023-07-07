@@ -12,3 +12,9 @@ root
 * train
 * utils
 ```
+
+## Train
+
+```
+python -m train.hybrid_unet_train
+```

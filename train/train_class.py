@@ -5,19 +5,20 @@ from tqdm.auto import tqdm
 import os
 import torchvision.transforms as transforms
 from torch.utils.tensorboard import SummaryWriter
+from torch.utils.data import Dataset, DataLoader
 import datetime
 from pathlib import Path
-from ..utils.utils import *
-from ..utils.dataloader import MyDataLoader
-from ..models.layers import VIT
+from utils.utils import *
+from utils.dataloader import MyDataLoader
+from models.layers import VIT
 
 
 class Trainer:
-    def __init__(self, base_dir: str, config_dir: str = "../models/config.yaml"):
+    def __init__(self, base_dir: str, config_dir: str = "models/config.yaml"):
         self.save_ckpt = False
         self.base_dir = base_dir
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-        self.cfg = self._load_config(os.path.join(base_dir, config_dir))
+        self.cfg = self._load_config(config_dir)
         self.model = None
         self.train_dataset = None
         self.test_dataset = None
@@ -44,32 +45,42 @@ class Trainer:
         self.writer = SummaryWriter(tensorboard_dir)
 
     def set_model(self, model_class):
+        '''
+        
+        '''
         self.model = model_class(self.cfg["model"], self.device).to(self.device)
         self.optimizer = get_optimizer(self.model, self.cfg["train"]["optimizer"])
         self.criterion = get_criterion(self.cfg["train"]["criterion"])
 
     def set_dataset(
         self,
-        dataset_name: str,
+        dataset_name: str =None,
+        dataset=None,
         transform=None,
         dataset_root: str = "/home/ubuntu/datasets/",
         val=False,
     ):
-        dataloader_class = MyDataLoader(
-            dataset_name=dataset_name,
-            dataset_root=dataset_root,
-            transform=transform,
-        )
-        if val:
-            (
-                self.train_dataset,
-                self.val_dataset,
-                self.test_dataset,
-            ) = dataloader_class.get_dataloader_with_validation(self.cfg["train"]["batch-size"])
-        else:
-            self.train_dataset, self.test_dataset = dataloader_class.get_dataloader(
-                self.cfg["train"]["batch-size"]
+        assert dataset_name != None or dataset != None
+        if dataset == None:
+            dataloader_class = MyDataLoader(
+                dataset_name=dataset_name,
+                dataset_root=dataset_root,
+                transform=transform,
             )
+            if val:
+                (
+                    self.train_dataset,
+                    self.val_dataset,
+                    self.test_dataset,
+                ) = dataloader_class.get_dataloader_with_validation(self.cfg["train"]["batch-size"])
+            else:
+                self.train_dataset, self.test_dataset = dataloader_class.get_dataloader(
+                    self.cfg["train"]["batch-size"]
+                )
+        else:
+            self.train_dataset = DataLoader(dataset, batch_size=self.cfg["train"]["batch-size"], shuffle=True, num_workers=4)
+            
+
 
     def train(
         self,
@@ -78,14 +89,15 @@ class Trainer:
         assert self.model is not None
         assert self.train_dataset is not None
 
-        for i in tqdm(range(epoch)):
+        for i in range(epoch):
             self._train(i)
-            self._validate(i)
+            # self._validate(i)
 
             # test(model, device, test_loader, criterion)
 
             # if batch_idx % test_interval == test_interval - 1 or batch_idx == len(train_loader) - 1:
             #     test(model, device, test_loader, criterion, args)
+            
 
         if self.writer is not None:
             self.writer.close()
@@ -93,8 +105,11 @@ class Trainer:
     def _train(self, current_epoch):
         self.model.train()
         total_loss = 0
-        for batch_idx, (data, target) in enumerate(self.train_dataset):
-            data, target = data.to(self.device), target.to(self.device)
+        batch_idx = 0
+        for data, target in tqdm(self.train_dataset):
+            # print('*', end="")
+            
+            data, target = data.to(self.device), target.to(self.device, dtype=torch.long)
             self.optimizer.zero_grad()
             output = self.model(data)
             loss = self.criterion(output, target)
@@ -107,6 +122,7 @@ class Trainer:
                     loss.item(),
                     batch_idx + current_epoch * (len(self.train_dataset)),
                 )
+            batch_idx +=1 
         if self.writer is not None:
             self.writer.add_scalar(
                 "Train Loss per Epoch", total_loss / len(self.train_dataset), current_epoch

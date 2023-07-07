@@ -85,23 +85,26 @@ class OutConv(nn.Module):
 #defines the layers in the Hybrid UNet architecture and their order and forwards pass functions 
 #more details on the architecture can be found in the medium article with the figure 
 class HybridUNet(nn.Module):
-    def __init__(self, n_channels, n_classes, bilinear=True):
+    def __init__(self, 
+                 model_cfg: dict,
+                 device="cpu"):
+        # n_channels, n_classes, bilinear=True
         super(HybridUNet, self).__init__()
-        self.n_channels = n_channels
-        self.n_classes = n_classes
-        self.bilinear = bilinear
+        self.n_channels = model_cfg["input_channel"]
+        self.n_classes = model_cfg["output_classes"]
+        self.bilinear = model_cfg['bilinear']
 
-        self.inc = DoubleConv(n_channels, 64)
+        self.inc = DoubleConv(model_cfg["input_channel"], 64)
         self.down1 = Down(64, 128)
         self.down2 = Down(128, 256)
         self.down3 = Down(256, 512)
-        factor = 2 if bilinear else 1
+        factor = 2 if model_cfg['bilinear'] else 1
         self.down4 = Down(512, 1024 // factor)
-        self.up1 = Up(1088, 512 // factor, bilinear)
-        self.up2 = Up(640, 256 // factor, bilinear)
-        self.up3 = Up(256, 128 // factor, bilinear)
-        self.up4 = Up(128, 64, bilinear)
-        self.outc = OutConv(64, n_classes)
+        self.up1 = Up(1088, 512 // factor, model_cfg['bilinear'])
+        self.up2 = Up(640, 256 // factor, model_cfg['bilinear'])
+        self.up3 = Up(256, 128 // factor, model_cfg['bilinear'])
+        self.up4 = Up(128, 64, model_cfg['bilinear'])
+        self.outc = OutConv(64, model_cfg["output_classes"])
 
         self.down1_1 = nn.MaxPool2d(8)
         self.down2_2 = nn.MaxPool2d(2)
