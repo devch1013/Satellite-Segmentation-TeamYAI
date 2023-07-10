@@ -74,8 +74,11 @@ class MyDataLoader:
 
 
 class SatelliteDataset(Dataset):
-    def __init__(self, csv_file, transform=None, infer=False):
-        self.data = pd.read_csv(csv_file)
+    def __init__(self, data, transform=None, infer=False, val=False):
+        if val:
+            self.data = data
+        else:
+            self.data = pd.read_csv(data)
         self.transform = transform
         self.infer = infer
 
@@ -90,6 +93,7 @@ class SatelliteDataset(Dataset):
         
         if self.infer:
             if self.transform:
+                # print(type(image))
                 image = self.transform(image=image)["image"]
             return image
 
@@ -103,6 +107,14 @@ class SatelliteDataset(Dataset):
 
         return image, mask
     
+def validate_separator(csv_file, transform):
+    data = pd.read_csv(csv_file)
+    data_len = len(data)
+    train_data = data.iloc[:int(data_len * 0.8),:]
+    validate_data = data.iloc[int(data_len * 0.8):,:]
+    train_dataset = SatelliteDataset(train_data, transform=transform, val=True)
+    validate_dataset = SatelliteDataset(validate_data, transform=transform, val=True)
+    return train_dataset, validate_dataset
     
     
 if __name__ == "__main__":

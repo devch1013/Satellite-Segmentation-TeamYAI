@@ -1,6 +1,7 @@
 import torch
 import numpy as np
 from utils.loss_func import calculate_dice_scores
+from torch import optim
 
 
 def get_optimizer(model, cfg):
@@ -21,14 +22,32 @@ def get_optimizer(model, cfg):
         optimizer = torch.optim.SGD(model.parameters(), lr=learning_rate, **args)
     elif optim_name == "adam":
         optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate, **args)
+    elif optim_name == "adamw":
+        optimizer = torch.optim.AdamW(model.parameters(), lr=learning_rate, **args)
     elif optim_name == "rmsprop":
         optimizer = torch.optim.RMSprop(model.parameters(), lr=learning_rate, **args)
     else:
         raise NotImplementedError
     return optimizer
 
+def get_scheduler(optimizer, cfg):
+    '''
+    get ["lr_scheduler"] cfg dictionary
+    '''
+    scheduler_name = cfg["name"].lower()
+    args = cfg["args"]
+    if scheduler_name == "plateau":
+        scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, 'max', **args)
+    elif scheduler_name == "multisteplr":
+        scheduler = optim.lr_scheduler.MultiStepLR(optimizer=optimizer, **args)
+    else:
+        raise NotImplementedError
+    return scheduler
+    
+
 
 def get_criterion(cfg):
+    
     """
     Return torch criterion
 
@@ -38,6 +57,7 @@ def get_criterion(cfg):
     Returns:
         criterion
     """
+    
     criterion_name = cfg["name"].lower()
     print(criterion_name)
     if criterion_name == "crossentropyloss":

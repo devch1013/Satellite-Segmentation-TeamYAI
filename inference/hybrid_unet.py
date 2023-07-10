@@ -16,17 +16,18 @@ device = "cuda"
 
 transform = A.Compose(
     [   
-        ToTensorV2(),
-        A.Normalize()
+        
+        A.Normalize(),
+        ToTensorV2()
     ])
 
 model = HybridUNet(cfg["model"])
-filename = "/home/ubuntu/dacon/models/ckpt/hybridUnet_crop_21_07-09-18:28"
+filename = "/root/dacon/models/ckpt/hybridUnet_crop_29_07-10-14:40"
 model.load_state_dict(torch.load(filename))
 model.to(device).eval()
 
 test_dataset = SatelliteDataset(csv_file='data/test.csv', transform=transform, infer=True)
-test_dataloader = DataLoader(test_dataset, batch_size=50, shuffle=False, num_workers=4)
+test_dataloader = DataLoader(test_dataset, batch_size=128, shuffle=False, num_workers=4)
 
 with torch.no_grad():
     model.eval()

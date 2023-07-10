@@ -42,6 +42,7 @@ class Trainer:
 
     def enable_tensorboard(self, log_dir: str = None, save_image_log=False):
         self.save_image_log = save_image_log
+        print(self.save_image_log)
         current_time = datetime.datetime.now() + datetime.timedelta(hours=9)
         current_time = current_time.strftime("%m-%d-%H:%M")
         Path(os.path.join(self.base_dir, f"log")).mkdir(parents=True, exist_ok=True)
@@ -50,26 +51,29 @@ class Trainer:
         tensorboard_dir = os.path.join(self.base_dir, log_dir)
         self.writer = SummaryWriter(tensorboard_dir)
 
-    def set_model(self, model_class):
+    def set_model(self, model_class, state_dict=None):
         '''
         
         '''
         self.model = model_class(self.cfg["model"], self.device).to(self.device)
+        if state_dict != None:
+            self.model.load_state_dict(torch.load(state_dict))
         self.optimizer = get_optimizer(self.model, self.cfg["train"]["optimizer"])
         self.criterion = get_criterion(self.cfg["train"]["criterion"])
+        self.scheduler = get_scheduler(self.optimizer, self.cfg["train"]["lr_scheduler"])
 
     def set_train_dataloader(
         self,
         dataset,
     ):
         print("data loader setting complete")
-        self.train_dataloader = DataLoader(dataset, batch_size=self.cfg["train"]["batch-size"], shuffle=True, num_workers=8)
+        self.train_dataloader = DataLoader(dataset, batch_size=self.cfg["train"]["batch-size"], shuffle=True, num_workers=16)
         
     def set_validation_dataloader(
         self,
         dataset,
     ):
-        self.val_dataloader = DataLoader(dataset, batch_size=self.cfg["train"]["batch-size"], shuffle=True, num_workers=8)
+        self.val_dataloader = DataLoader(dataset, batch_size=self.cfg["train"]["batch-size"], shuffle=True, num_workers=16)
         self.validation = True
             
 
@@ -80,6 +84,8 @@ class Trainer:
     ):
         assert self.model is not None
         assert self.train_dataloader is not None
+        
+        print("batch size: ", self.cfg["train"]["batch-size"])
         
         if epoch == None:
             epoch = self.cfg["train"]["epoch"]
@@ -107,19 +113,15 @@ class Trainer:
             
             data, target = data.to(self.device, dtype=torch.float32), target.to(self.device, dtype=torch.float32)
             self.optimizer.zero_grad()
-            # print(data)
             output = self.model(data)
-            # print(output.size(), target.size())
-            # print(output)
-            # print(target)
             output = output.squeeze(dim=1)
             loss = self.criterion(output, target)
-            # print(target.size())
-            loss += dice_loss(
+            dice = dice_loss(
                 F.softmax(output, dim=1).float(),
                 target,
                 multiclass=False
             )
+            loss += dice
             total_loss += loss.item()
             loss.backward()
             self.optimizer.step()
@@ -129,16 +131,40 @@ class Trainer:
                     loss.item(),
                     batch_idx + current_epoch * (len(self.train_dataloader)),
                 )
+                self.writer.add_scalar(
+                    "Dice score",
+                    (dice-1)*-1,
+                    batch_idx + current_epoch * (len(self.train_dataloader)),
+                )
+                self.writer.add_scalar(
+                "learning rate", self.optimizer.param_groups[0]["lr"], current_epoch
+                )
             batch_idx +=1 
+        if self.validation:
+            self.model.eval()
+            with torch.no_grad():
+                loss = self.criterion(output, target)
+                # print(target.size())
+                dice = dice_loss(
+                    F.softmax(output, dim=1).float(),
+                    target,
+                    multiclass=False
+                )
+                loss += dice
+                
+        self.scheduler.step()
         if self.writer is not None:
             self.writer.add_scalar(
                 "Train Loss per Epoch", total_loss / len(self.train_dataloader), current_epoch
             )
+            
             if self.save_image_log:
-                data_img = torchvision.utils.make_grid(data)
-                mask_img = torchvision.utils.make_grid(data)
-                self.writer.add_image('inter_result', data_img)
-                self.writer.add_image('inter_result', mask_img)
+                origin_img = torchvision.utils.make_grid(data[0])
+                data_img = torchvision.utils.make_grid((output[0] > 0.35).to(dtype=torch.int32))
+                mask_img = torchvision.utils.make_grid(target[0])
+                self.writer.add_image('inter_result_origin', origin_img, current_epoch)
+                self.writer.add_image('inter_result_output', data_img, current_epoch)
+                self.writer.add_image('inter_result_mask', mask_img, current_epoch)
         if self.save_ckpt:
             current_time = datetime.datetime.now() + datetime.timedelta(hours=9)
             current_time = current_time.strftime("%m-%d-%H:%M")
