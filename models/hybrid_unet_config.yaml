@@ -1,18 +1,19 @@
-model-name: VIT
+model-name: hybridUnet_crop
 device: cuda
 model:
   input_channel: 3
-  output_classes: 2
+  output_classes: 1
   bilinear: true
 
 train:
   epoch: 30
-  batch-size: 4
+  batch-size: 16
   criterion:
+    # name: dice
     name: crossentropyloss
   optimizer:
     name: adam
-    learning-rate: 0.001
+    learning-rate: 0.000001
     args:
       betas: [0.9, 0.999]
   lr_scheduler:

@@ -4,13 +4,16 @@ import sys
 from tqdm.auto import tqdm
 import os
 import torchvision.transforms as transforms
+import torchvision
 from torch.utils.tensorboard import SummaryWriter
 from torch.utils.data import Dataset, DataLoader
 import datetime
 from pathlib import Path
 from utils.utils import *
+from utils.loss_func import dice_loss
 from utils.dataloader import MyDataLoader
 from models.layers import VIT
+import torch.nn.functional as F
 
 
 class Trainer:
@@ -20,10 +23,12 @@ class Trainer:
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.cfg = self._load_config(config_dir)
         self.model = None
-        self.train_dataset = None
-        self.test_dataset = None
-        self.val_dataset = None
+        self.train_dataloader = None
+        self.test_dataloader = None
+        self.val_dataloader = None
+        self.validation = False
         self.writer = None
+        
 
     def _load_config(self, config_dir: str):
         with open(config_dir) as f:
@@ -35,7 +40,8 @@ class Trainer:
         self.save_ckpt = True
         self.save_dir = save_dir
 
-    def enable_tensorboard(self, log_dir: str = None):
+    def enable_tensorboard(self, log_dir: str = None, save_image_log=False):
+        self.save_image_log = save_image_log
         current_time = datetime.datetime.now() + datetime.timedelta(hours=9)
         current_time = current_time.strftime("%m-%d-%H:%M")
         Path(os.path.join(self.base_dir, f"log")).mkdir(parents=True, exist_ok=True)
@@ -52,46 +58,36 @@ class Trainer:
         self.optimizer = get_optimizer(self.model, self.cfg["train"]["optimizer"])
         self.criterion = get_criterion(self.cfg["train"]["criterion"])
 
-    def set_dataset(
+    def set_train_dataloader(
         self,
-        dataset_name: str =None,
-        dataset=None,
-        transform=None,
-        dataset_root: str = "/home/ubuntu/datasets/",
-        val=False,
+        dataset,
     ):
-        assert dataset_name != None or dataset != None
-        if dataset == None:
-            dataloader_class = MyDataLoader(
-                dataset_name=dataset_name,
-                dataset_root=dataset_root,
-                transform=transform,
-            )
-            if val:
-                (
-                    self.train_dataset,
-                    self.val_dataset,
-                    self.test_dataset,
-                ) = dataloader_class.get_dataloader_with_validation(self.cfg["train"]["batch-size"])
-            else:
-                self.train_dataset, self.test_dataset = dataloader_class.get_dataloader(
-                    self.cfg["train"]["batch-size"]
-                )
-        else:
-            self.train_dataset = DataLoader(dataset, batch_size=self.cfg["train"]["batch-size"], shuffle=True, num_workers=4)
+        print("data loader setting complete")
+        self.train_dataloader = DataLoader(dataset, batch_size=self.cfg["train"]["batch-size"], shuffle=True, num_workers=8)
+        
+    def set_validation_dataloader(
+        self,
+        dataset,
+    ):
+        self.val_dataloader = DataLoader(dataset, batch_size=self.cfg["train"]["batch-size"], shuffle=True, num_workers=8)
+        self.validation = True
             
 
 
     def train(
         self,
-        epoch: int = 10,
+        epoch: int = None,
     ):
         assert self.model is not None
-        assert self.train_dataset is not None
+        assert self.train_dataloader is not None
+        
+        if epoch == None:
+            epoch = self.cfg["train"]["epoch"]
 
         for i in range(epoch):
             self._train(i)
-            # self._validate(i)
+            if self.validation:
+                self._validate(i)
 
             # test(model, device, test_loader, criterion)
 
@@ -106,13 +102,24 @@ class Trainer:
         self.model.train()
         total_loss = 0
         batch_idx = 0
-        for data, target in tqdm(self.train_dataset):
+        for data, target in tqdm(self.train_dataloader):
             # print('*', end="")
             
-            data, target = data.to(self.device), target.to(self.device, dtype=torch.long)
+            data, target = data.to(self.device, dtype=torch.float32), target.to(self.device, dtype=torch.float32)
             self.optimizer.zero_grad()
+            # print(data)
             output = self.model(data)
+            # print(output.size(), target.size())
+            # print(output)
+            # print(target)
+            output = output.squeeze(dim=1)
             loss = self.criterion(output, target)
+            # print(target.size())
+            loss += dice_loss(
+                F.softmax(output, dim=1).float(),
+                target,
+                multiclass=False
+            )
             total_loss += loss.item()
             loss.backward()
             self.optimizer.step()
@@ -120,13 +127,23 @@ class Trainer:
                 self.writer.add_scalar(
                     "Train Loss",
                     loss.item(),
-                    batch_idx + current_epoch * (len(self.train_dataset)),
+                    batch_idx + current_epoch * (len(self.train_dataloader)),
                 )
             batch_idx +=1 
         if self.writer is not None:
             self.writer.add_scalar(
-                "Train Loss per Epoch", total_loss / len(self.train_dataset), current_epoch
+                "Train Loss per Epoch", total_loss / len(self.train_dataloader), current_epoch
             )
+            if self.save_image_log:
+                data_img = torchvision.utils.make_grid(data)
+                mask_img = torchvision.utils.make_grid(data)
+                self.writer.add_image('inter_result', data_img)
+                self.writer.add_image('inter_result', mask_img)
+        if self.save_ckpt:
+            current_time = datetime.datetime.now() + datetime.timedelta(hours=9)
+            current_time = current_time.strftime("%m-%d-%H:%M")
+            model_name = self.cfg["model-name"]
+            torch.save(self.model.state_dict(), f"{self.save_dir}/{model_name}_{current_epoch}_{current_time}")
 
     def inference(self, x):
         self.model.eval()

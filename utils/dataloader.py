@@ -90,7 +90,7 @@ class SatelliteDataset(Dataset):
         
         if self.infer:
             if self.transform:
-                image = self.transform(image=image)['image']
+                image = self.transform(image=image)["image"]
             return image
 
         mask_rle = self.data.iloc[idx, 2]
@@ -98,8 +98,8 @@ class SatelliteDataset(Dataset):
 
         if self.transform:
             augmented = self.transform(image=image, mask=mask)
-            image = augmented['image']
-            mask = augmented['mask']
+            image = augmented["image"]
+            mask = augmented["mask"]
 
         return image, mask
     

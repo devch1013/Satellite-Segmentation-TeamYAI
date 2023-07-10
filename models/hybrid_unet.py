@@ -61,12 +61,10 @@ class Up(nn.Module):
     def forward(self, x1, x2, x3=None):
         x1 = self.up(x1)
         # input is CHW
-
         if x3 != None:
             x = torch.cat([x3, x2, x1], dim=1)
         else:
             x = torch.cat([x2, x1], dim=1)
-
         return self.conv(x)
 
 #class named OutConv inheriting from nn.Module class

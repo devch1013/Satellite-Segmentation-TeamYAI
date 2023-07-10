@@ -1,5 +1,6 @@
 import torch
 import numpy as np
+from utils.loss_func import calculate_dice_scores
 
 
 def get_optimizer(model, cfg):
@@ -38,8 +39,12 @@ def get_criterion(cfg):
         criterion
     """
     criterion_name = cfg["name"].lower()
+    print(criterion_name)
     if criterion_name == "crossentropyloss":
         criterion = torch.nn.CrossEntropyLoss()
+        
+    elif criterion_name == "dice":
+        criterion = calculate_dice_scores
     else:
         raise NotImplementedError
     return criterion

@@ -7,15 +7,16 @@ from utils.dataloader import SatelliteDataset
 
 
 if __name__ == "__main__":
-    train_class = Trainer(base_dir="E:\contest\Dacon", config_dir="models/hybrid_unet_config.yaml")
+    train_class = Trainer(base_dir="/home/ubuntu/dacon", config_dir="models/hybrid_unet_config.yaml")
     train_class.set_model(HybridUNet)
-    transform = A.Compose(
-    [   
-        A.Resize(224, 224),
-        A.Normalize(),
-        ToTensorV2()
-    ]
-)
-    train_class.set_dataset(dataset=SatelliteDataset(csv_file='data/train.csv', transform=transform, infer=False))
-    # train_class.enable_tensorboard()
-    train_class.train(epoch=10)
+    transform = A.Compose([
+    A.RandomCrop(224, 224),
+    A.Normalize(),
+    A.HorizontalFlip(), # Same with transforms.RandomHorizontalFlip()
+    ToTensorV2()
+])
+    train_class.set_train_dataloader(dataset=SatelliteDataset(csv_file='data/train.csv', transform=transform, infer=False))
+    train_class.enable_ckpt("models/ckpt")
+    train_class.enable_tensorboard(save_image_log=True)
+    train_class.train()
+    
