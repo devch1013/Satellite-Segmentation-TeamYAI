@@ -1,13 +1,13 @@
-model-name: hybridUnet
+model-name: MaskRCNN
 device: cuda
-model:
-  input_channel: 4
-  output_classes: 1
-  bilinear: true
+# model:
+#   input_channel: 3
+#   output_classes: 1
+#   bilinear: true
 
 train:
   epoch: 1000
-  batch-size: 16
+  batch-size: 64
   criterion:
     # name: dice
     name: crossentropyloss

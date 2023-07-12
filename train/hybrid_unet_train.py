@@ -8,7 +8,7 @@ from utils.dataloader import SatelliteDataset, validate_separator
 
 if __name__ == "__main__":
     train_class = Trainer(base_dir="/root/dacon", config_dir="models/hybrid_unet_config.yaml")
-    train_class.set_model(HybridUNet, state_dict="models/ckpt/hybridUnet_crop_29_07-10-14:40")
+    train_class.set_model(HybridUNet)
     transform = A.Compose([
         A.RandomCrop(224, 224),
         A.Normalize(),

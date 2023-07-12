@@ -6,7 +6,7 @@ from torch.utils.data import Dataset, DataLoader
 import cv2
 import pandas as pd
 from utils.utils import rle_decode
-
+import numpy as np
 
 class MyDataLoader:
     def __init__(
@@ -46,17 +46,17 @@ class MyDataLoader:
         return train_dataset, test_dataset
 
     def _get_shuffle_loader(self, dataset, batch_size):
-        return torch.utils.data.DataLoader(
+        return DataLoader(
             dataset, batch_size=batch_size, shuffle=True, drop_last=True
         )
 
     def get_train_loader(self, batch_size):
-        return torch.utils.data.DataLoader(
+        return DataLoader(
             self.train_dataset, batch_size=batch_size, shuffle=True, drop_last=True
         )
 
     def get_test_loader(self, batch_size):
-        return torch.utils.data.DataLoader(
+        return DataLoader(
             self.test_dataset, batch_size=batch_size, shuffle=False, drop_last=True
         )
 
@@ -93,8 +93,14 @@ class SatelliteDataset(Dataset):
         
         if self.infer:
             if self.transform:
-                # print(type(image))
                 image = self.transform(image=image)["image"]
+                image = (np.array(image.permute(1,2,0))*255).astype(np.uint8)
+                edge = cv2.Canny(image, 150, 350)
+                edge = np.expand_dims(edge, axis = 2)
+                image = np.concatenate((image, edge), axis = 2)
+                transform = transforms.ToTensor()
+                image = transform(image)
+                
             return image
 
         mask_rle = self.data.iloc[idx, 2]
@@ -104,14 +110,19 @@ class SatelliteDataset(Dataset):
             augmented = self.transform(image=image, mask=mask)
             image = augmented["image"]
             mask = augmented["mask"]
-
+            image = (np.array(image.permute(1,2,0))*255).astype(np.uint8)
+            edge = cv2.Canny(image, 150, 350)
+            edge = np.expand_dims(edge, axis = 2)
+            image = np.concatenate((image, edge), axis = 2)
+            transform = transforms.ToTensor()
+            image = transform(image)
         return image, mask
     
 def validate_separator(csv_file, transform):
     data = pd.read_csv(csv_file)
     data_len = len(data)
-    train_data = data.iloc[:int(data_len * 0.8),:]
-    validate_data = data.iloc[int(data_len * 0.8):,:]
+    train_data = data.iloc[:int(data_len * 0.85),:]
+    validate_data = data.iloc[int(data_len * 0.85):,:]
     train_dataset = SatelliteDataset(train_data, transform=transform, val=True)
     validate_dataset = SatelliteDataset(validate_data, transform=transform, val=True)
     return train_dataset, validate_dataset
