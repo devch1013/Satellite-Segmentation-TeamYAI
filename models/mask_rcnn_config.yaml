@@ -1,13 +1,13 @@
-model-name: hybridUnet-edge
+model-name: MaskRCNN
 device: cuda
-model:
-  input_channel: 3
-  output_classes: 1
-  bilinear: true
+# model:
+#   input_channel: 3
+#   output_classes: 1
+#   bilinear: true
 
 train:
   epoch: 1000
-  batch-size: 16
+  batch-size: 64
   criterion:
     # name: dice
     name: crossentropyloss
@@ -20,7 +20,6 @@ train:
     name: plateau
     args:
       patience: 5
-      factor: 0.5
     # name: multisteplr
     # args:
     #   milestones: [5,10,15,20]

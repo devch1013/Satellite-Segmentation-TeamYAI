@@ -24,34 +24,34 @@ def rle_decode(mask_rle: Union[str, int], shape=(224, 224)) -> np.array:
     return img.reshape(shape)
 
 
-def dice_score(prediction: torch.tensor, ground_truth: torch.tensor, smooth=1e-7) -> float:
-    '''
-    Calculate Dice Score between two binary masks.
-    '''
-    intersection = torch.sum(prediction * ground_truth)
-    dice = (2.0 * intersection + smooth) / (torch.sum(prediction) + torch.sum(ground_truth) + smooth)
-    return dice
+# def dice_score(prediction: torch.tensor, ground_truth: torch.tensor, smooth=1e-7) -> float:
+#     '''
+#     Calculate Dice Score between two binary masks.
+#     '''
+#     intersection = torch.sum(prediction * ground_truth)
+#     dice = (2.0 * intersection + smooth) / (torch.sum(prediction) + torch.sum(ground_truth) + smooth)
+#     return dice
 
 
-def calculate_dice_scores(prediction, ground_truth, img_shape=(224, 224)) -> List[float]:
-    '''
-    Calculate Dice scores for a dataset.
-    '''
-    def calculate_dice(pred, gt):
-        if torch.sum(gt) > 0 or torch.sum(pred) > 0:
-            return dice_score(pred, gt)
-        else:
-            return None  # No valid masks found, return None
+# def calculate_dice_scores(prediction, ground_truth, img_shape=(224, 224)) -> List[float]:
+#     '''
+#     Calculate Dice scores for a dataset.
+#     '''
+#     def calculate_dice(pred, gt):
+#         if torch.sum(gt) > 0 or torch.sum(pred) > 0:
+#             return dice_score(pred, gt)
+#         else:
+#             return None  # No valid masks found, return None
 
 
-    dice_scores = Parallel(n_jobs=-1)(
-        delayed(calculate_dice)(pred, gt) for pred, gt in zip(prediction, ground_truth))
+#     dice_scores = Parallel(n_jobs=-1)(
+#         delayed(calculate_dice)(pred, gt) for pred, gt in zip(prediction, ground_truth))
 
 
-    dice_scores = [score for score in dice_scores if score is not None]  # Exclude None values
+#     dice_scores = [score for score in dice_scores if score is not None]  # Exclude None values
 
 
-    return torch.mean(dice_scores)
+#     return torch.mean(dice_scores)
 
 
 def dice_coeff(input: torch.Tensor, target: torch.Tensor, reduce_batch_first: bool = False, epsilon: float = 1e-6):

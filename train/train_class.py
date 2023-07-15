@@ -10,7 +10,7 @@ from torch.utils.data import Dataset, DataLoader
 import datetime
 from pathlib import Path
 from utils.utils import *
-from utils.loss_func import dice_loss
+from utils.loss_func import dice_loss, dice_coeff
 from utils.dataloader import MyDataLoader
 from models.layers import VIT
 import torch.nn.functional as F
@@ -42,6 +42,7 @@ class Trainer:
 
     def enable_tensorboard(self, log_dir: str = None, save_image_log=False):
         self.save_image_log = save_image_log
+        print(self.save_image_log)
         current_time = datetime.datetime.now() + datetime.timedelta(hours=9)
         current_time = current_time.strftime("%m-%d-%H:%M")
         Path(os.path.join(self.base_dir, f"log")).mkdir(parents=True, exist_ok=True)
@@ -50,26 +51,36 @@ class Trainer:
         tensorboard_dir = os.path.join(self.base_dir, log_dir)
         self.writer = SummaryWriter(tensorboard_dir)
 
-    def set_model(self, model_class):
+    def set_model(self, model_class, state_dict=None):
         '''
         
         '''
         self.model = model_class(self.cfg["model"], self.device).to(self.device)
+        if state_dict != None:
+            self.model.load_state_dict(torch.load(state_dict))
+        self._set_train_func()
+    
+    def set_pretrained_model(self, model):
+        self.model = model
+        self._set_train_func()
+        
+    def _set_train_func(self):
         self.optimizer = get_optimizer(self.model, self.cfg["train"]["optimizer"])
         self.criterion = get_criterion(self.cfg["train"]["criterion"])
+        self.scheduler = get_scheduler(self.optimizer, self.cfg["train"]["lr_scheduler"])
 
     def set_train_dataloader(
         self,
         dataset,
     ):
         print("data loader setting complete")
-        self.train_dataloader = DataLoader(dataset, batch_size=self.cfg["train"]["batch-size"], shuffle=True, num_workers=8)
+        self.train_dataloader = DataLoader(dataset, batch_size=self.cfg["train"]["batch-size"], shuffle=True, num_workers=16)
         
     def set_validation_dataloader(
         self,
         dataset,
     ):
-        self.val_dataloader = DataLoader(dataset, batch_size=self.cfg["train"]["batch-size"], shuffle=True, num_workers=8)
+        self.val_dataloader = DataLoader(dataset, batch_size=self.cfg["validation"]["batch-size"], shuffle=True, num_workers=16)
         self.validation = True
             
 
@@ -81,13 +92,15 @@ class Trainer:
         assert self.model is not None
         assert self.train_dataloader is not None
         
+        print("batch size: ", self.cfg["train"]["batch-size"])
+        
         if epoch == None:
             epoch = self.cfg["train"]["epoch"]
 
         for i in range(epoch):
             self._train(i)
-            if self.validation:
-                self._validate(i)
+            # if self.validation:
+            #     self._validate(i)
 
             # test(model, device, test_loader, criterion)
 
@@ -102,19 +115,16 @@ class Trainer:
         self.model.train()
         total_loss = 0
         batch_idx = 0
+        print("train for epoch ",current_epoch)
         for data, target in tqdm(self.train_dataloader):
             # print('*', end="")
             
             data, target = data.to(self.device, dtype=torch.float32), target.to(self.device, dtype=torch.float32)
             self.optimizer.zero_grad()
-            # print(data)
             output = self.model(data)
-            # print(output.size(), target.size())
-            # print(output)
-            # print(target)
             output = output.squeeze(dim=1)
             loss = self.criterion(output, target)
-            # print(target.size())
+            
             loss += dice_loss(
                 F.softmax(output, dim=1).float(),
                 target,
@@ -129,16 +139,56 @@ class Trainer:
                     loss.item(),
                     batch_idx + current_epoch * (len(self.train_dataloader)),
                 )
+                # self.writer.add_scalar(
+                #     "Dice score",
+                #     1-dice,
+                #     batch_idx + current_epoch * (len(self.train_dataloader)),
+                # )
+                self.writer.add_scalar(
+                "learning rate", self.optimizer.param_groups[0]["lr"], current_epoch
+                )
             batch_idx +=1 
+        print("Train loss=", total_loss/ len(self.train_dataloader))
+        if self.validation:
+            total_val_loss = 0
+            total_dice_score = 0
+            self.model.eval()
+            print("validation of epoch ",current_epoch)
+            with torch.no_grad():
+                for data, target in tqdm(self.val_dataloader):
+                    data, target = data.to(self.device, dtype=torch.float32), target.to(self.device, dtype=torch.float32)
+                    output = self.model(data)
+                    output = output.squeeze(dim=1)
+                    val_loss = self.criterion(output, target)
+                    dice = dice_loss(
+                        F.softmax(output, dim=1).float(),
+                        target,
+                        multiclass=False
+                    )
+                    val_loss += dice
+                    total_val_loss += val_loss.item()
+                    total_dice_score += dice_coeff(input=((F.sigmoid(output)) > 0.5).float().squeeze(1), target=target, reduce_batch_first=False).item()
+        print("Validation loss=", total_val_loss/ len(self.val_dataloader))
+        print("Validation dice score=", total_dice_score/ len(self.val_dataloader))
+        self.scheduler.step(total_val_loss/ len(self.val_dataloader))
         if self.writer is not None:
             self.writer.add_scalar(
                 "Train Loss per Epoch", total_loss / len(self.train_dataloader), current_epoch
             )
+            self.writer.add_scalar(
+                "Validation Loss per Epoch", total_val_loss / len(self.val_dataloader), current_epoch
+            )
+            self.writer.add_scalar(
+                "Validation Dice score per Epoch", total_dice_score / len(self.val_dataloader), current_epoch
+            )
+            
             if self.save_image_log:
-                data_img = torchvision.utils.make_grid(data)
-                mask_img = torchvision.utils.make_grid(data)
-                self.writer.add_image('inter_result', data_img)
-                self.writer.add_image('inter_result', mask_img)
+                origin_img = torchvision.utils.make_grid(data[0])
+                data_img = torchvision.utils.make_grid((F.sigmoid(output[0]) > 0.5).to(dtype=torch.int32))
+                mask_img = torchvision.utils.make_grid(target[0])
+                self.writer.add_image('inter_result_origin', origin_img, current_epoch)
+                self.writer.add_image('inter_result_output', data_img, current_epoch)
+                self.writer.add_image('inter_result_mask', mask_img, current_epoch)
         if self.save_ckpt:
             current_time = datetime.datetime.now() + datetime.timedelta(hours=9)
             current_time = current_time.strftime("%m-%d-%H:%M")

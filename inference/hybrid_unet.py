@@ -16,17 +16,18 @@ device = "cuda"
 
 transform = A.Compose(
     [   
-        ToTensorV2(),
-        A.Normalize()
+        
+        A.Normalize(),
+        ToTensorV2()
     ])
 
 model = HybridUNet(cfg["model"])
-filename = "/home/ubuntu/dacon/models/ckpt/hybridUnet_crop_21_07-09-18:28"
+filename = "/root/dacon/models/ckpt/hybridUnet_154_07-10-22:11"
 model.load_state_dict(torch.load(filename))
 model.to(device).eval()
 
-test_dataset = SatelliteDataset(csv_file='data/test.csv', transform=transform, infer=True)
-test_dataloader = DataLoader(test_dataset, batch_size=50, shuffle=False, num_workers=4)
+test_dataset = SatelliteDataset(data='data/test.csv', transform=transform, infer=True)
+test_dataloader = DataLoader(test_dataset, batch_size=128, shuffle=False, num_workers=4)
 
 with torch.no_grad():
     model.eval()
@@ -37,7 +38,7 @@ with torch.no_grad():
         outputs = model(images)
         masks = torch.sigmoid(outputs).cpu().numpy()
         masks = np.squeeze(masks, axis=1)
-        masks = (masks > 0.35).astype(np.uint8) # Threshold = 0.35
+        masks = (masks > 0.5).astype(np.uint8) # Threshold = 0.35
         
         for i in range(len(images)):
             mask_rle = rle_encode(masks[i])
@@ -49,5 +50,5 @@ with torch.no_grad():
 submit = pd.read_csv('data/sample_submission.csv')
 submit['mask_rle'] = result
 
-filename = filename.split("/")[-1].replace(":", "-")+"submit.csv"
+filename = filename.split("/")[-1].split('_')[0]+"submit.csv"
 submit.to_csv(f'data/{filename}', index=False)
