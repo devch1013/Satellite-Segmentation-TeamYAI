@@ -1,7 +1,7 @@
-model-name: hybridUnet
+model-name: hybridUnet-edge
 device: cuda
 model:
-  input_channel: 4
+  input_channel: 3
   output_classes: 1
   bilinear: true
 
@@ -20,6 +20,7 @@ train:
     name: plateau
     args:
       patience: 5
+      factor: 0.5
     # name: multisteplr
     # args:
     #   milestones: [5,10,15,20]

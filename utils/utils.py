@@ -37,7 +37,7 @@ def get_scheduler(optimizer, cfg):
     scheduler_name = cfg["name"].lower()
     args = cfg["args"]
     if scheduler_name == "plateau":
-        scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, 'max', **args)
+        scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, 'min', **args)
     elif scheduler_name == "multisteplr":
         scheduler = optim.lr_scheduler.MultiStepLR(optimizer=optimizer, **args)
     else:

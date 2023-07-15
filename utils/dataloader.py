@@ -94,12 +94,12 @@ class SatelliteDataset(Dataset):
         if self.infer:
             if self.transform:
                 image = self.transform(image=image)["image"]
-                image = (np.array(image.permute(1,2,0))*255).astype(np.uint8)
-                edge = cv2.Canny(image, 150, 350)
-                edge = np.expand_dims(edge, axis = 2)
-                image = np.concatenate((image, edge), axis = 2)
-                transform = transforms.ToTensor()
-                image = transform(image)
+                # image = (np.array(image.permute(1,2,0))*255).astype(np.uint8)
+                # edge = cv2.Canny(image, 150, 350)
+                # edge = np.expand_dims(edge, axis = 2)
+                # image = np.concatenate((image, edge), axis = 2)
+                # transform = transforms.ToTensor()
+                # image = transform(image)
                 
             return image
 
@@ -110,12 +110,12 @@ class SatelliteDataset(Dataset):
             augmented = self.transform(image=image, mask=mask)
             image = augmented["image"]
             mask = augmented["mask"]
-            image = (np.array(image.permute(1,2,0))*255).astype(np.uint8)
-            edge = cv2.Canny(image, 150, 350)
-            edge = np.expand_dims(edge, axis = 2)
-            image = np.concatenate((image, edge), axis = 2)
-            transform = transforms.ToTensor()
-            image = transform(image)
+            # image = (np.array(image.permute(1,2,0))*255).astype(np.uint8)
+            # edge = cv2.Canny(image, 150, 350)
+            # edge = np.expand_dims(edge, axis = 2)
+            # image = np.concatenate((image, edge), axis = 2)
+            # transform = transforms.ToTensor()
+            # image = transform(image)
         return image, mask
     
 def validate_separator(csv_file, transform):
