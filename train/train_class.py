@@ -55,7 +55,7 @@ class Trainer:
         '''
         
         '''
-        self.model = model_class(self.cfg["model"], self.device).to(self.device)
+        self.model = model_class(**self.cfg["model"]).to(self.device)
         if state_dict != None:
             self.model.load_state_dict(torch.load(state_dict))
         self._set_train_func()
@@ -161,7 +161,7 @@ class Trainer:
                     output = output.squeeze(dim=1)
                     val_loss = self.criterion(output, target)
                     dice = dice_loss(
-                        F.softmax(output, dim=1).float(),
+                        output.float(),
                         target,
                         multiclass=False
                     )
