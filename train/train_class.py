@@ -14,6 +14,7 @@ from utils.loss_func import dice_loss, dice_coeff
 from utils.dataloader import MyDataLoader
 from models.layers import VIT
 import torch.nn.functional as F
+from utils.losses.diceLoss import dice_coeff_batch
 
 
 class Trainer:
@@ -42,7 +43,7 @@ class Trainer:
 
     def enable_tensorboard(self, log_dir: str = None, save_image_log=False):
         self.save_image_log = save_image_log
-        print(self.save_image_log)
+        # print(self.save_image_log)
         current_time = datetime.datetime.now() + datetime.timedelta(hours=9)
         current_time = current_time.strftime("%m-%d-%H:%M")
         Path(os.path.join(self.base_dir, f"log")).mkdir(parents=True, exist_ok=True)
@@ -50,6 +51,7 @@ class Trainer:
             log_dir = f"log/{self.cfg['model-name']}__epochs-{self.cfg['train']['epoch']}_batch_size-{self.cfg['train']['batch-size']}__{current_time}"
         tensorboard_dir = os.path.join(self.base_dir, log_dir)
         self.writer = SummaryWriter(tensorboard_dir)
+        print("TensorBoard logging enabled")
 
     def set_model(self, model_class, state_dict=None):
         '''
@@ -122,14 +124,15 @@ class Trainer:
             data, target = data.to(self.device, dtype=torch.float32), target.to(self.device, dtype=torch.float32)
             self.optimizer.zero_grad()
             output = self.model(data)
-            output = output.squeeze(dim=1)
-            loss = self.criterion(output, target)
+            # output = output.squeeze(dim=1)
+            target = target.unsqueeze(dim=1)
+            loss = self.criterion(F.softmax(output, dim=0), target)
             
-            loss += dice_loss(
-                F.softmax(output, dim=1).float(),
-                target,
-                multiclass=False
-            )
+            # loss += dice_loss(
+            #     F.softmax(output, dim=1).float(),
+            #     target,
+            #     multiclass=False
+            # )
             total_loss += loss.item()
             loss.backward()
             self.optimizer.step()
@@ -148,6 +151,7 @@ class Trainer:
                 "learning rate", self.optimizer.param_groups[0]["lr"], current_epoch
                 )
             batch_idx +=1 
+            
         print("Train loss=", total_loss/ len(self.train_dataloader))
         if self.validation:
             total_val_loss = 0
@@ -158,16 +162,11 @@ class Trainer:
                 for data, target in tqdm(self.val_dataloader):
                     data, target = data.to(self.device, dtype=torch.float32), target.to(self.device, dtype=torch.float32)
                     output = self.model(data)
-                    output = output.squeeze(dim=1)
-                    val_loss = self.criterion(output, target)
-                    dice = dice_loss(
-                        output.float(),
-                        target,
-                        multiclass=False
-                    )
-                    val_loss += dice
+                    # output = output.squeeze(dim=1)
+                    target = target.unsqueeze(dim=1)
+                    val_loss = self.criterion(F.softmax(output, dim=0), target)
                     total_val_loss += val_loss.item()
-                    total_dice_score += dice_coeff(input=((F.sigmoid(output)) > 0.5).float().squeeze(1), target=target, reduce_batch_first=False).item()
+                    total_dice_score += dice_coeff_batch(input=output2mask(F.softmax(output, dim=0)), target=target.unsqueeze(dim=1)).item()
         print("Validation loss=", total_val_loss/ len(self.val_dataloader))
         print("Validation dice score=", total_dice_score/ len(self.val_dataloader))
         self.scheduler.step(total_val_loss/ len(self.val_dataloader))
@@ -184,7 +183,7 @@ class Trainer:
             
             if self.save_image_log:
                 origin_img = torchvision.utils.make_grid(data[0])
-                data_img = torchvision.utils.make_grid((F.sigmoid(output[0]) > 0.5).to(dtype=torch.int32))
+                data_img = torchvision.utils.make_grid(output2mask(output[0]).to(dtype=torch.int32))
                 mask_img = torchvision.utils.make_grid(target[0])
                 self.writer.add_image('inter_result_origin', origin_img, current_epoch)
                 self.writer.add_image('inter_result_output', data_img, current_epoch)
