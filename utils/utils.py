@@ -2,6 +2,8 @@ import torch
 import numpy as np
 # from utils.loss_func import calculate_dice_scores
 from torch import optim
+import torch.nn.functional as F
+from .loss_func import hybrid_seg_loss
 
 
 def get_optimizer(model, cfg):
@@ -62,6 +64,8 @@ def get_criterion(cfg):
     print(criterion_name)
     if criterion_name == "crossentropyloss":
         criterion = torch.nn.BCEWithLogitsLoss()
+    elif criterion_name == "hybrid-seg-loss":
+        criterion = hybrid_seg_loss
         
     # elif criterion_name == "dice":
     #     criterion = calculate_dice_scores
@@ -87,3 +91,6 @@ def rle_encode(mask):
     runs = np.where(pixels[1:] != pixels[:-1])[0] + 1
     runs[1::2] -= runs[::2]
     return ' '.join(str(x) for x in runs)
+
+def output2mask(output, threshold = 0.5):
+    return (output > threshold).float()

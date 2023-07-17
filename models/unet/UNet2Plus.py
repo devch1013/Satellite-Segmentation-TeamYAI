@@ -11,7 +11,7 @@ from torchvision import models
 class UNet2Plus(nn.Module):
     def __init__(self, n_channels=3, n_classes=1, bilinear=True, feature_scale=4, 
                  is_deconv=True, is_batchnorm=True, is_ds=True):
-        super(UNet_2Plus, self).__init__()
+        super(UNet2Plus, self).__init__()
         self.n_channels = n_channels
         self.n_classes = n_classes
         self.bilinear = bilinear

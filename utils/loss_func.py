@@ -3,6 +3,11 @@ import pandas as pd
 from typing import List, Union
 from joblib import Parallel, delayed
 import torch
+from utils.losses.bceLoss import BCE_loss
+from utils.losses.diceLoss import dice_coeff_batch
+from utils.losses.msssimLoss import msssim
+import torch.nn.functional as F
+
 
 def rle_decode(mask_rle: Union[str, int], shape=(224, 224)) -> np.array:
     '''
@@ -78,3 +83,14 @@ def dice_loss(input: torch.Tensor, target: torch.Tensor, multiclass: bool = Fals
     # Dice loss (objective to minimize) between 0 and 1
     fn = multiclass_dice_coeff if multiclass else dice_coeff
     return 1 - fn(input, target, reduce_batch_first=True)
+
+
+
+def hybrid_seg_loss(input: torch.Tensor, target: torch.Tensor):
+    dice = 1-dice_coeff_batch(input, target)
+    bce = BCE_loss(input, target)
+    msssim_loss = msssim(input, target)
+    total_loss = dice + bce + msssim_loss
+    # print(dice, bce, msssim_loss)
+    return total_loss#, dice, bce, msssim_loss
+    

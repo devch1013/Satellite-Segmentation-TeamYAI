@@ -11,8 +11,8 @@ if __name__ == "__main__":
     train_class.set_model(UNet3Plus)
     transform = A.Compose([
         A.RandomCrop(224, 224),
+        A.HorizontalFlip(),
         A.Normalize(),
-        A.HorizontalFlip(), # Same with transforms.RandomHorizontalFlip()
         ToTensorV2()
     ])
     train_dataset, validate_dataset = validate_separator(csv_file='data/train.csv', transform=transform)
