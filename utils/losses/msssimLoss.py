@@ -54,6 +54,7 @@ def ssim(img1, img2, window_size=11, window=None, size_average=True, full=False,
 
     v1 = 2.0 * sigma12 + C2
     v2 = sigma1_sq + sigma2_sq + C2
+    # print("v2: ", v2)
     cs = torch.mean(v1 / v2)  # contrast sensitivity
     ssim_map = ((2 * mu1_mu2 + C1) * v1) / ((mu1_sq + mu2_sq + C1) * v2)
 
@@ -62,8 +63,11 @@ def ssim(img1, img2, window_size=11, window=None, size_average=True, full=False,
     else:
         ret = ssim_map.mean(1).mean(1).mean(1)
 
+    # print("ssim: ", ret)
     if full:
         return ret, cs
+    
+    
     return ret
 
 
@@ -71,7 +75,7 @@ def msssim(img1, img2, window_size=11, size_average=True, val_range=None, normal
     device = img1.device
     # print(device)
     weights = torch.FloatTensor([0.0448, 0.2856, 0.3001, 0.2363, 0.1333]).to(device)
-    # print("weight!")
+    # print("weight!: ", weights)
     levels = weights.size()[0]
     mssim = []
     mcs = []
@@ -93,6 +97,8 @@ def msssim(img1, img2, window_size=11, size_average=True, val_range=None, normal
 
     pow1 = mcs ** weights
     pow2 = mssim ** weights
+    # print("mcs: ", mcs, "mssim: ",mssim)
+    # print("pow1: ", pow1, "pow2: ", pow2)
     
     # From Matlab implementation https://ece.uwaterloo.ca/~z70wang/research/iwssim/
     output = torch.prod(pow1[:-1] * pow2[-1])

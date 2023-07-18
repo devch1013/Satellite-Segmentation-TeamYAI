@@ -122,11 +122,17 @@ class Trainer:
             # print('*', end="")
             
             data, target = data.to(self.device, dtype=torch.float32), target.to(self.device, dtype=torch.float32)
+            # print("data: ", data)
             self.optimizer.zero_grad()
+            # print(data)
             output = self.model(data)
+            # print("output: ", output)
             # output = output.squeeze(dim=1)
             target = target.unsqueeze(dim=1)
-            loss = self.criterion(F.softmax(output, dim=0), target)
+            # print("data: ", data, "output: ",output)
+            # print(target)
+            # print(F.sigmoid(output))
+            loss = self.criterion(F.sigmoid(output), target)
             
             # loss += dice_loss(
             #     F.softmax(output, dim=1).float(),
@@ -164,9 +170,9 @@ class Trainer:
                     output = self.model(data)
                     # output = output.squeeze(dim=1)
                     target = target.unsqueeze(dim=1)
-                    val_loss = self.criterion(F.softmax(output, dim=0), target)
+                    val_loss = self.criterion(F.sigmoid(output), target)
                     total_val_loss += val_loss.item()
-                    total_dice_score += dice_coeff_batch(input=output2mask(F.softmax(output, dim=0)), target=target.unsqueeze(dim=1)).item()
+                    total_dice_score += dice_coeff_batch(input=output2mask(F.sigmoid(output)), target=target.unsqueeze(dim=1)).item()
         print("Validation loss=", total_val_loss/ len(self.val_dataloader))
         print("Validation dice score=", total_dice_score/ len(self.val_dataloader))
         self.scheduler.step(total_val_loss/ len(self.val_dataloader))

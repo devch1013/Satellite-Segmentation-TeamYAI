@@ -87,9 +87,10 @@ def dice_loss(input: torch.Tensor, target: torch.Tensor, multiclass: bool = Fals
 
 
 def hybrid_seg_loss(input: torch.Tensor, target: torch.Tensor):
+    # print("loss input: ", input)
     dice = 1-dice_coeff_batch(input, target)
     bce = BCE_loss(input, target)
-    msssim_loss = msssim(input, target)
+    msssim_loss = msssim(input, target, normalize=True)
     total_loss = dice + bce + msssim_loss
     # print(dice, bce, msssim_loss)
     return total_loss#, dice, bce, msssim_loss

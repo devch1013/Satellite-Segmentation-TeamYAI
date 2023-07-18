@@ -15,7 +15,7 @@ if __name__ == "__main__":
         A.Normalize(),
         ToTensorV2()
     ])
-    train_dataset, validate_dataset = validate_separator(csv_file='data/train.csv', transform=transform)
+    train_dataset, validate_dataset = validate_separator(csv_file='data/train.csv', transform=transform, validation_ratio=0.9)
     train_class.set_train_dataloader(dataset=train_dataset)
     train_class.set_validation_dataloader(dataset=validate_dataset)
     train_class.enable_ckpt("models/ckpt/unet3plus")
