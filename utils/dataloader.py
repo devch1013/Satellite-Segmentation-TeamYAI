@@ -118,11 +118,11 @@ class SatelliteDataset(Dataset):
             # image = transform(image)
         return image, mask
     
-def validate_separator(csv_file, transform):
+def validate_separator(csv_file, transform, validation_ratio=0.85):
     data = pd.read_csv(csv_file)
     data_len = len(data)
-    train_data = data.iloc[:int(data_len * 0.85),:]
-    validate_data = data.iloc[int(data_len * 0.85):,:]
+    train_data = data.iloc[:int(data_len * validation_ratio),:]
+    validate_data = data.iloc[int(data_len * validation_ratio):,:]
     train_dataset = SatelliteDataset(train_data, transform=transform, val=True)
     validate_dataset = SatelliteDataset(validate_data, transform=transform, val=True)
     return train_dataset, validate_dataset

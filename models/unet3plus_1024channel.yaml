@@ -1,0 +1,38 @@
+model-name: Unet3plus_1024channel
+device: cuda
+model:
+  n_channels: 3
+  n_classes: 1
+  bilinear: true
+  feature_scale: 4
+  is_deconv: true
+  is_batchnorm: true
+  # filters: [32, 64, 128, 256, 512]
+  filters: [64, 128, 256, 512, 1024]
+
+train:
+  epoch: 1000
+  batch-size: 16
+  criterion:
+    # name: dice
+    # name: crossentropyloss
+    name: hybrid-seg-loss
+  optimizer:
+    name: adamw
+    learning-rate: 0.00001
+    args:
+      betas: [0.9, 0.999]
+  lr_scheduler:
+    name: plateau
+    args:
+      patience: 7
+      factor: 0.8
+    # name: multisteplr
+    # args:
+    #   milestones: [5,10,15,20]
+    #   gamma: 0.5
+  log-interval: 10
+validation:
+  batch-size: 64
+test:
+  batch-size: 256
