@@ -10,20 +10,20 @@ import torch.nn.functional as F
 
 
 def rle_decode(mask_rle: Union[str, int], shape=(224, 224)) -> np.array:
-    '''
+    """
     mask_rle: run-length as string formatted (start length)
-    shape: (height,width) of array to return 
+    shape: (height,width) of array to return
     Returns numpy array, 1 - mask, 0 - background
-    '''
-    
+    """
+
     if mask_rle == -1:
         return np.zeros(shape)
-    
+
     s = mask_rle.split()
     starts, lengths = [np.asarray(x, dtype=int) for x in (s[0:][::2], s[1:][::2])]
     starts -= 1
     ends = starts + lengths
-    img = np.zeros(shape[0]*shape[1], dtype=np.uint8)
+    img = np.zeros(shape[0] * shape[1], dtype=np.uint8)
     for lo, hi in zip(starts, ends):
         img[lo:hi] = 1
     return img.reshape(shape)
@@ -59,7 +59,12 @@ def rle_decode(mask_rle: Union[str, int], shape=(224, 224)) -> np.array:
 #     return torch.mean(dice_scores)
 
 
-def dice_coeff(input: torch.Tensor, target: torch.Tensor, reduce_batch_first: bool = False, epsilon: float = 1e-6):
+def dice_coeff(
+    input: torch.Tensor,
+    target: torch.Tensor,
+    reduce_batch_first: bool = False,
+    epsilon: float = 1e-6,
+):
     # Average of Dice coefficient for all batches, or for a single mask
     assert input.size() == target.size()
     assert input.dim() == 3 or not reduce_batch_first
@@ -74,7 +79,12 @@ def dice_coeff(input: torch.Tensor, target: torch.Tensor, reduce_batch_first: bo
     return dice.mean()
 
 
-def multiclass_dice_coeff(input: torch.Tensor, target: torch.Tensor, reduce_batch_first: bool = False, epsilon: float = 1e-6):
+def multiclass_dice_coeff(
+    input: torch.Tensor,
+    target: torch.Tensor,
+    reduce_batch_first: bool = False,
+    epsilon: float = 1e-6,
+):
     # Average of Dice coefficient for all classes
     return dice_coeff(input.flatten(0, 1), target.flatten(0, 1), reduce_batch_first, epsilon)
 
@@ -85,13 +95,17 @@ def dice_loss(input: torch.Tensor, target: torch.Tensor, multiclass: bool = Fals
     return 1 - fn(input, target, reduce_batch_first=True)
 
 
-
 def hybrid_seg_loss(input: torch.Tensor, target: torch.Tensor):
     # print("loss input: ", input)
-    dice = 1-dice_coeff_batch(input, target)
+    dice = 1 - dice_coeff_batch(input, target)
     bce = BCE_loss(input, target)
-    msssim_loss = msssim(input, target, normalize=True)
+    msssim_loss = 1 - msssim(input, target, normalize=True)
     total_loss = dice + bce + msssim_loss
     # print(dice, bce, msssim_loss)
-    return total_loss#, dice, bce, msssim_loss
-    
+    loss_dict = {
+        "Dice Loss": dice,
+        "Binary Cross Entropy": bce,
+        "MSSIM Loss": msssim_loss,
+    }
+    # return total_loss  # , dice, bce, msssim_loss
+    return loss_dict
