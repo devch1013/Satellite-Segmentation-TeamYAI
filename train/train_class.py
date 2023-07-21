@@ -134,7 +134,12 @@ class Trainer:
             # print("data: ", data, "output: ",output)
             # print(target)
             # print(F.sigmoid(output))
-            losses = self.criterion(F.sigmoid(output), target)
+
+            ##### for unet3+ CGM
+            # for o in output:
+            #     self.criterion()
+            #####
+            losses = self.criterion(output, target)
             if type(losses) == dict:
                 loss = sum(losses.values())
             else:
@@ -174,14 +179,14 @@ class Trainer:
                     output = self.model(data)
                     # output = output.squeeze(dim=1)
                     target = target.unsqueeze(dim=1)
-                    val_losses = self.criterion(F.sigmoid(output), target)
+                    val_losses = self.criterion(output, target)
                     if type(val_losses) == dict:
                         val_loss = sum(val_losses.values())
                     else:
                         val_loss = val_losses
                     total_val_loss += val_loss.item()
                     total_dice_score += dice_coeff_batch(
-                        input=output2mask(F.sigmoid(output)), target=target.unsqueeze(dim=1)
+                        input=output2mask(output), target=target.unsqueeze(dim=1)
                     ).item()
         print("Validation loss=", total_val_loss / len(self.val_dataloader))
         print("Validation dice score=", total_dice_score / len(self.val_dataloader))
