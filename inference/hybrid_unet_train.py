@@ -16,7 +16,7 @@ device = "cuda"
 
 transform = A.Compose(
     [   
-        
+        A.augmentations.crops.transforms.CenterCrop(224,224,p=1),
         A.Normalize(),
         ToTensorV2()
     ])
@@ -26,7 +26,7 @@ filename = "/root/dacon/models/ckpt/hybridUnet_154_07-10-22:11"
 model.load_state_dict(torch.load(filename))
 model.to(device).eval()
 
-test_dataset = SatelliteDataset(data='data/test.csv', transform=transform, infer=True)
+test_dataset = SatelliteDataset(data='data/train.csv', transform=transform, infer=True)
 test_dataloader = DataLoader(test_dataset, batch_size=128, shuffle=False, num_workers=4)
 
 with torch.no_grad():
@@ -47,8 +47,8 @@ with torch.no_grad():
             else:
                 result.append(mask_rle)
                 
-submit = pd.read_csv('data/sample_submission.csv')
+submit = pd.read_csv('data/train.csv')
 submit['mask_rle'] = result
 
-filename = filename.split("/")[-1].split('_')[0]+"submit.csv"
+filename = "train_inference.csv"
 submit.to_csv(f'data/{filename}', index=False)

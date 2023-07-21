@@ -1,16 +1,22 @@
-model-name: hybridUnet-edge
+model-name: Unet3plus_1024channel
 device: cuda
 model:
-  input_channel: 3
-  output_classes: 1
+  n_channels: 3
+  n_classes: 1
   bilinear: true
+  feature_scale: 4
+  is_deconv: true
+  is_batchnorm: true
+  # filters: [32, 64, 128, 256, 512]
+  filters: [64, 128, 256, 512, 1024]
 
 train:
   epoch: 1000
   batch-size: 16
   criterion:
     # name: dice
-    name: crossentropyloss
+    # name: crossentropyloss
+    name: hybrid-seg-loss
   optimizer:
     name: adamw
     learning-rate: 0.00001
@@ -19,8 +25,8 @@ train:
   lr_scheduler:
     name: plateau
     args:
-      patience: 5
-      factor: 0.5
+      patience: 7
+      factor: 0.8
     # name: multisteplr
     # args:
     #   milestones: [5,10,15,20]

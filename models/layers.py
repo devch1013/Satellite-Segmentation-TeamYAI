@@ -62,6 +62,7 @@ class LinearEmbeddingLayer(nn.Module):
         x = rearrange(
             x, "b c (h2 h1) (w2 w1) -> b (h2 w2) (h1 w1 c)", h1=self.patch_size, w1=self.patch_size
         )
+        ## b, 패치개수, 패치 flatten
         x = self.linear(x)
         x = torch.cat([repeat(self.class_token, "() n e -> b n e", b=self.batch_size), x], dim=1)
         x = self.positional_encoding(x)
