@@ -22,6 +22,8 @@ class Trainer:
         self.save_ckpt = False
         self.base_dir = base_dir
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        self.multi_loss = False
+        self.multi_output = False
         self.cfg = self._load_config(config_dir)
         self.model = None
         self.train_dataloader = None
@@ -34,6 +36,8 @@ class Trainer:
         with open(config_dir) as f:
             cfg = yaml.safe_load(f)
         print("Model Name: ", cfg["model-name"])
+        self.multi_loss = cfg["train"]["multi-loss"]
+        self.multi_output = cfg["train"]["multi-output"]
         return cfg
 
     def enable_ckpt(self, save_dir: str):
@@ -134,11 +138,19 @@ class Trainer:
             # print("data: ", data, "output: ",output)
             # print(target)
             # print(F.sigmoid(output))
-            losses = self.criterion(F.sigmoid(output), target)
-            if type(losses) == dict:
-                loss = sum(losses.values())
-            else:
-                loss = losses
+            # if self.multi_output:
+            #     losses = self.criterion(output[0], target)
+            #     for o in output[1:]:
+            #         tmp_loss = self.criterion(o, target)
+            #         for k ,v in tmp_loss.items():
+            #             losses[k] += v
+            # else:
+            #     losses = self.criterion(output, target)
+            # if type(losses) == dict:
+            #     loss = sum(losses.values())
+            # else:
+            #     loss = losses
+            loss, losses = self._get_loss(output=output, target=target)
             total_loss += loss.item()
             loss.backward()
             self.optimizer.step()
@@ -151,7 +163,7 @@ class Trainer:
                 if type(losses) == dict:
                     for key, value in losses.items():
                         self.writer.add_scalar(
-                            key,
+                            "Train " + key,
                             value,
                             batch_idx + current_epoch * (len(self.train_dataloader)),
                         )
@@ -171,18 +183,22 @@ class Trainer:
                     data, target = data.to(self.device, dtype=torch.float32), target.to(
                         self.device, dtype=torch.float32
                     )
-                    output = self.model(data)
+                    outputs = self.model(data)
                     # output = output.squeeze(dim=1)
                     target = target.unsqueeze(dim=1)
-                    val_losses = self.criterion(F.sigmoid(output), target)
-                    if type(val_losses) == dict:
-                        val_loss = sum(val_losses.values())
-                    else:
-                        val_loss = val_losses
+                    val_loss, val_losses = self._get_loss(output=outputs, target=target)
+                    # val_losses = self.criterion(output, target)
+                    # if type(val_losses) == dict:
+                    #     val_loss = sum(val_losses.values())
+                    # else:
+                    #     val_loss = val_losses
                     total_val_loss += val_loss.item()
+                    if self.multi_output:
+                        output = torch.concat(outputs, dim=1).mean(dim=1).unsqueeze(1)
                     total_dice_score += dice_coeff_batch(
-                        input=output2mask(F.sigmoid(output)), target=target.unsqueeze(dim=1)
+                        input=output2mask(output), target=target.unsqueeze(dim=1)
                     ).item()
+
         print("Validation loss=", total_val_loss / len(self.val_dataloader))
         print("Validation dice score=", total_dice_score / len(self.val_dataloader))
         self.scheduler.step(total_val_loss / len(self.val_dataloader))
@@ -202,9 +218,18 @@ class Trainer:
             )
 
             if self.save_image_log:
-                origin_img = torchvision.utils.make_grid(data[0])
-                data_img = torchvision.utils.make_grid(output2mask(output[0]).to(dtype=torch.int32))
-                mask_img = torchvision.utils.make_grid(target[0])
+                origin_img = torchvision.utils.make_grid(data[:5], pad_value=0.5)
+                output_tensor = []
+                # print("output: ", outputs.shape)
+                outputs = list(outputs)
+                outputs.append(output)
+                print(len(outputs))
+                for o in outputs:
+                    output_tensor.append(output2mask(o[:5]).to(dtype=torch.int32))
+                output_tensor = torch.concat(output_tensor, dim=0)
+                # data_img = torchvision.utils.make_grid(output2mask(output[:5]).to(dtype=torch.int32))
+                data_img = torchvision.utils.make_grid(output_tensor, nrow=5, pad_value=0.5)
+                mask_img = torchvision.utils.make_grid(target[:5], pad_value=0.5)
                 self.writer.add_image("inter_result_origin", origin_img, current_epoch)
                 self.writer.add_image("inter_result_output", data_img, current_epoch)
                 self.writer.add_image("inter_result_mask", mask_img, current_epoch)
@@ -270,6 +295,32 @@ class Trainer:
                 100.0 * correct / len(self.test_dataset.dataset),
                 current_epoch,
             )
+
+    def _get_loss(self, output, target):
+        len_output = 1
+        weight = [1, 5, 3]
+        if self.multi_loss:
+
+            if self.multi_output:
+                len_output = len(output)
+                losses = self.criterion(output[0], target)
+                for o in output[1:]:
+                    tmp_loss = self.criterion(o, target)
+                    for (k, v), w in zip(tmp_loss.items(), weight):
+                        losses[k] += v * w
+
+            else:
+                losses = self.criterion(output, target)
+            return sum(losses.values()) / len_output, losses
+        else:
+            loss = 0
+            if self.multi_output:
+                len_output = len(output)
+                for o in output:
+                    loss += self.criterion(o, target)
+            else:
+                loss += self.criterion(output, target)
+            return loss, {"Loss": loss / len_output}
 
 
 if __name__ == "__main__":
