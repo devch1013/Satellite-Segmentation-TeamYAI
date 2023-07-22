@@ -15,6 +15,7 @@ from utils.dataloader import MyDataLoader
 from models.layers import VIT
 import torch.nn.functional as F
 from utils.losses.diceLoss import dice_coeff_batch
+from models.CRF.crf_model import crf
 
 
 class Trainer:
@@ -171,6 +172,7 @@ class Trainer:
                     "learning rate", self.optimizer.param_groups[0]["lr"], current_epoch
                 )
             batch_idx += 1
+            # break
 
         print("Train loss=", total_loss / len(self.train_dataloader))
         if self.validation:
@@ -184,6 +186,7 @@ class Trainer:
                         self.device, dtype=torch.float32
                     )
                     outputs = self.model(data)
+
                     # output = output.squeeze(dim=1)
                     target = target.unsqueeze(dim=1)
                     val_loss, val_losses = self._get_loss(output=outputs, target=target)
@@ -195,9 +198,12 @@ class Trainer:
                     total_val_loss += val_loss.item()
                     if self.multi_output:
                         output = torch.concat(outputs, dim=1).mean(dim=1).unsqueeze(1)
+
+                    # output = crf(output)
                     total_dice_score += dice_coeff_batch(
                         input=output2mask(output), target=target.unsqueeze(dim=1)
                     ).item()
+                    # break
 
         print("Validation loss=", total_val_loss / len(self.val_dataloader))
         print("Validation dice score=", total_dice_score / len(self.val_dataloader))
@@ -298,7 +304,8 @@ class Trainer:
 
     def _get_loss(self, output, target):
         len_output = 1
-        weight = [1, 5, 3]
+        # weight = [5, 2, 5]
+        weight = self.cfg["train"]["criterion"]["weight"]
         if self.multi_loss:
 
             if self.multi_output:

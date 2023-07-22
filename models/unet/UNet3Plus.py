@@ -299,6 +299,7 @@ class UNet3Plus_DeepSup(nn.Module):
         feature_scale=4,
         is_deconv=True,
         is_batchnorm=True,
+        filters=[64, 128, 256, 512, 1024],
     ):
         super(UNet3Plus_DeepSup, self).__init__()
         self.n_channels = n_channels
@@ -307,7 +308,6 @@ class UNet3Plus_DeepSup(nn.Module):
         self.feature_scale = feature_scale
         self.is_deconv = is_deconv
         self.is_batchnorm = is_batchnorm
-        filters = [64, 128, 256, 512, 1024]
 
         ## -------------Encoder--------------
         self.conv1 = unetConv2(self.n_channels, filters[0], self.is_batchnorm)
