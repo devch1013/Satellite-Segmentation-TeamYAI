@@ -248,6 +248,37 @@ class Trainer:
                 f"{self.save_dir}/{model_name}_{current_epoch}_{current_time}",
             )
 
+    def validate(self):
+        total_val_loss = 0
+        total_dice_score = 0
+        self.model.eval()
+        print("Validation")
+        with torch.no_grad():
+            for data, target in tqdm(self.val_dataloader):
+                data, target = data.to(self.device, dtype=torch.float32), target.to(
+                    self.device, dtype=torch.float32
+                )
+                outputs = self.model(data)
+
+                # output = output.squeeze(dim=1)
+                target = target.unsqueeze(dim=1)
+                val_loss, val_losses = self._get_loss(output=outputs, target=target)
+                # val_losses = self.criterion(output, target)
+                # if type(val_losses) == dict:
+                #     val_loss = sum(val_losses.values())
+                # else:
+                #     val_loss = val_losses
+                total_val_loss += val_loss.item()
+                if self.multi_output:
+                    output = torch.concat(outputs, dim=1).mean(dim=1).unsqueeze(1)
+
+                # output = crf(output)
+                total_dice_score += dice_coeff_batch(
+                    input=output2mask(output), target=target.unsqueeze(dim=1)
+                ).item()
+                # break
+        print("final dice loss", total_dice_score / len(self.val_dataloader))
+
     def inference(self, x):
         self.model.eval()
         self.model(x)
