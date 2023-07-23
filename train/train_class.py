@@ -15,7 +15,8 @@ from utils.dataloader import MyDataLoader
 from models.layers import VIT
 import torch.nn.functional as F
 from utils.losses.diceLoss import dice_coeff_batch
-from models.CRF.crf_model import crf
+
+# from models.CRF.crf_model import crf
 
 
 class Trainer:
@@ -133,24 +134,8 @@ class Trainer:
             self.optimizer.zero_grad()
             # print(data)
             output = self.model(data)
-            # print("output: ", output)
-            # output = output.squeeze(dim=1)
+
             target = target.unsqueeze(dim=1)
-            # print("data: ", data, "output: ",output)
-            # print(target)
-            # print(F.sigmoid(output))
-            # if self.multi_output:
-            #     losses = self.criterion(output[0], target)
-            #     for o in output[1:]:
-            #         tmp_loss = self.criterion(o, target)
-            #         for k ,v in tmp_loss.items():
-            #             losses[k] += v
-            # else:
-            #     losses = self.criterion(output, target)
-            # if type(losses) == dict:
-            #     loss = sum(losses.values())
-            # else:
-            #     loss = losses
             loss, losses = self._get_loss(output=output, target=target)
             total_loss += loss.item()
             loss.backward()
@@ -198,6 +183,8 @@ class Trainer:
                     total_val_loss += val_loss.item()
                     if self.multi_output:
                         output = torch.concat(outputs, dim=1).mean(dim=1).unsqueeze(1)
+                    else:
+                        output = outputs
 
                     # output = crf(output)
                     total_dice_score += dice_coeff_batch(
@@ -225,14 +212,17 @@ class Trainer:
 
             if self.save_image_log:
                 origin_img = torchvision.utils.make_grid(data[:5], pad_value=0.5)
-                output_tensor = []
-                # print("output: ", outputs.shape)
-                outputs = list(outputs)
-                outputs.append(output)
-                print(len(outputs))
-                for o in outputs:
-                    output_tensor.append(output2mask(o[:5]).to(dtype=torch.int32))
-                output_tensor = torch.concat(output_tensor, dim=0)
+                if self.multi_output:
+                    output_tensor = []
+                    # print("output: ", outputs.shape)
+                    outputs = list(outputs)
+                    outputs.append(output)
+                    # print(len(outputs))
+                    for o in outputs:
+                        output_tensor.append(output2mask(o[:5]).to(dtype=torch.int32))
+                    output_tensor = torch.concat(output_tensor, dim=0)
+                else:
+                    output_tensor = output2mask(outputs[:5])
                 # data_img = torchvision.utils.make_grid(output2mask(output[:5]).to(dtype=torch.int32))
                 data_img = torchvision.utils.make_grid(output_tensor, nrow=5, pad_value=0.5)
                 mask_img = torchvision.utils.make_grid(target[:5], pad_value=0.5)
