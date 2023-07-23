@@ -269,12 +269,16 @@ class Trainer:
                 # else:
                 #     val_loss = val_losses
                 total_val_loss += val_loss.item()
-                if self.multi_output:
-                    output = torch.concat(outputs, dim=1).mean(dim=1).unsqueeze(1)
+                # if self.multi_output:
+                # outputs = list(outputs)
+                # outputs.append(outputs[0])
+                # outputs.append(outputs[0])
+                output = torch.concat(outputs, dim=1).mean(dim=1).unsqueeze(1)
+                # output = outputs[4]
 
                 # output = crf(output)
                 total_dice_score += dice_coeff_batch(
-                    input=output2mask(output), target=target.unsqueeze(dim=1)
+                    input=output2mask(output, threshold=0.5), target=target.unsqueeze(dim=1)
                 ).item()
                 # break
         print("final dice loss", total_dice_score / len(self.val_dataloader))
