@@ -136,6 +136,7 @@ class Trainer:
             output = self.model(data)
 
             target = target.unsqueeze(dim=1)
+
             loss, losses = self._get_loss(output=output, target=target)
             total_loss += loss.item()
             loss.backward()
@@ -167,6 +168,7 @@ class Trainer:
             print("validation of epoch ", current_epoch)
             with torch.no_grad():
                 for data, target in tqdm(self.val_dataloader):
+                    # print("data:", data)
                     data, target = data.to(self.device, dtype=torch.float32), target.to(
                         self.device, dtype=torch.float32
                     )
@@ -175,11 +177,6 @@ class Trainer:
                     # output = output.squeeze(dim=1)
                     target = target.unsqueeze(dim=1)
                     val_loss, val_losses = self._get_loss(output=outputs, target=target)
-                    # val_losses = self.criterion(output, target)
-                    # if type(val_losses) == dict:
-                    #     val_loss = sum(val_losses.values())
-                    # else:
-                    #     val_loss = val_losses
                     total_val_loss += val_loss.item()
                     if self.multi_output:
                         output = torch.concat(outputs, dim=1).mean(dim=1).unsqueeze(1)
@@ -259,12 +256,16 @@ class Trainer:
                 # else:
                 #     val_loss = val_losses
                 total_val_loss += val_loss.item()
-                if self.multi_output:
-                    output = torch.concat(outputs, dim=1).mean(dim=1).unsqueeze(1)
+                # if self.multi_output:
+                # outputs = list(outputs)
+                # outputs.append(outputs[0])
+                # outputs.append(outputs[0])
+                output = torch.concat(outputs, dim=1).mean(dim=1).unsqueeze(1)
+                # output = outputs[4]
 
                 # output = crf(output)
                 total_dice_score += dice_coeff_batch(
-                    input=output2mask(output), target=target.unsqueeze(dim=1)
+                    input=output2mask(output, threshold=0.5), target=target.unsqueeze(dim=1)
                 ).item()
                 # break
         print("final dice loss", total_dice_score / len(self.val_dataloader))
@@ -331,7 +332,10 @@ class Trainer:
 
             if self.multi_output:
                 len_output = len(output)
+                # print(output[0].shape)
+                # print(output[0])
                 losses = self.criterion(output[0], target)
+
                 for o in output[1:]:
                     tmp_loss = self.criterion(o, target)
                     for (k, v), w in zip(tmp_loss.items(), weight):
