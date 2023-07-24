@@ -16,10 +16,8 @@ from models.layers import VIT
 import torch.nn.functional as F
 from utils.losses.diceLoss import dice_coeff_batch
 
-# from models.CRF.crf_model import crf
 
-
-class Trainer:
+class TrainerSegdiff:
     def __init__(self, base_dir: str, config_dir: str = "models/config.yaml"):
         self.save_ckpt = False
         self.base_dir = base_dir
@@ -130,14 +128,9 @@ class Trainer:
             data, target = data.to(self.device, dtype=torch.float32), target.to(
                 self.device, dtype=torch.float32
             )
-            # print("data: ", data)
             self.optimizer.zero_grad()
-            # print(data)
-            output = self.model(data)
-
-            target = target.unsqueeze(dim=1)
-
-            loss, losses = self._get_loss(output=output, target=target)
+            # output = self.model(data)
+            loss = self.model(cond_img=data, img=target)
             total_loss += loss.item()
             loss.backward()
             self.optimizer.step()
@@ -147,18 +140,11 @@ class Trainer:
                     loss.item(),
                     batch_idx + current_epoch * (len(self.train_dataloader)),
                 )
-                if type(losses) == dict:
-                    for key, value in losses.items():
-                        self.writer.add_scalar(
-                            "Train " + key,
-                            value,
-                            batch_idx + current_epoch * (len(self.train_dataloader)),
-                        )
                 self.writer.add_scalar(
                     "learning rate", self.optimizer.param_groups[0]["lr"], current_epoch
                 )
             batch_idx += 1
-            # break
+            break
 
         print("Train loss=", total_loss / len(self.train_dataloader))
         if self.validation:
@@ -168,26 +154,19 @@ class Trainer:
             print("validation of epoch ", current_epoch)
             with torch.no_grad():
                 for data, target in tqdm(self.val_dataloader):
-                    # print("data:", data)
                     data, target = data.to(self.device, dtype=torch.float32), target.to(
                         self.device, dtype=torch.float32
                     )
-                    outputs = self.model(data)
 
-                    # output = output.squeeze(dim=1)
-                    target = target.unsqueeze(dim=1)
-                    val_loss, val_losses = self._get_loss(output=outputs, target=target)
+                    val_loss = self.model(cond_img=data, img=target)
+
                     total_val_loss += val_loss.item()
-                    if self.multi_output:
-                        output = torch.concat(outputs, dim=1).mean(dim=1).unsqueeze(1)
-                    else:
-                        output = outputs
 
-                    # output = crf(output)
+                    output = self.model.sample(data)
                     total_dice_score += dice_coeff_batch(
                         input=output2mask(output), target=target.unsqueeze(dim=1)
                     ).item()
-                    # break
+                    break
 
         print("Validation loss=", total_val_loss / len(self.val_dataloader))
         print("Validation dice score=", total_dice_score / len(self.val_dataloader))
@@ -209,17 +188,14 @@ class Trainer:
 
             if self.save_image_log:
                 origin_img = torchvision.utils.make_grid(data[:5], pad_value=0.5)
-                if self.multi_output:
-                    output_tensor = []
-                    # print("output: ", outputs.shape)
-                    outputs = list(outputs)
-                    outputs.append(output)
-                    # print(len(outputs))
-                    for o in outputs:
-                        output_tensor.append(output2mask(o[:5]).to(dtype=torch.int32))
-                    output_tensor = torch.concat(output_tensor, dim=0)
-                else:
-                    output_tensor = output2mask(outputs[:5])
+                output_tensor = output[:5]
+                # print("output: ", outputs.shape)
+                # outputs = list(outputs)
+                # outputs.append(output)
+                # print(len(outputs))
+                # for o in outputs:
+                #     output_tensor.append(output2mask(o[:5]).to(dtype=torch.int32))
+                # output_tensor = torch.concat(output_tensor, dim=0)
                 # data_img = torchvision.utils.make_grid(output2mask(output[:5]).to(dtype=torch.int32))
                 data_img = torchvision.utils.make_grid(output_tensor, nrow=5, pad_value=0.5)
                 mask_img = torchvision.utils.make_grid(target[:5], pad_value=0.5)
@@ -256,16 +232,12 @@ class Trainer:
                 # else:
                 #     val_loss = val_losses
                 total_val_loss += val_loss.item()
-                # if self.multi_output:
-                # outputs = list(outputs)
-                # outputs.append(outputs[0])
-                # outputs.append(outputs[0])
-                output = torch.concat(outputs, dim=1).mean(dim=1).unsqueeze(1)
-                # output = outputs[4]
+                if self.multi_output:
+                    output = torch.concat(outputs, dim=1).mean(dim=1).unsqueeze(1)
 
                 # output = crf(output)
                 total_dice_score += dice_coeff_batch(
-                    input=output2mask(output, threshold=0.5), target=target.unsqueeze(dim=1)
+                    input=output2mask(output), target=target.unsqueeze(dim=1)
                 ).item()
                 # break
         print("final dice loss", total_dice_score / len(self.val_dataloader))
@@ -332,10 +304,7 @@ class Trainer:
 
             if self.multi_output:
                 len_output = len(output)
-                # print(output[0].shape)
-                # print(output[0])
                 losses = self.criterion(output[0], target)
-
                 for o in output[1:]:
                     tmp_loss = self.criterion(o, target)
                     for (k, v), w in zip(tmp_loss.items(), weight):

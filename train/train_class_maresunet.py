@@ -33,6 +33,7 @@ class Trainer:
         self.val_dataloader = None
         self.validation = False
         self.writer = None
+        self.cls_criterion = torch.nn.BCEWithLogitsLoss()
 
     def _load_config(self, config_dir: str):
         with open(config_dir) as f:
@@ -124,6 +125,7 @@ class Trainer:
         total_loss = 0
         batch_idx = 0
         print("train for epoch ", current_epoch)
+
         for data, target in tqdm(self.train_dataloader):
             # print('*', end="")
 
@@ -133,11 +135,13 @@ class Trainer:
             # print("data: ", data)
             self.optimizer.zero_grad()
             # print(data)
-            output = self.model(data)
-
             target = target.unsqueeze(dim=1)
+            cls_target = torch.any(torch.any(target, 2), 2).squeeze().float()
+            output, classification = self.model(data)
 
             loss, losses = self._get_loss(output=output, target=target)
+            cls_loss = self.cls_criterion(classification.squeeze(), cls_target)
+            loss += cls_loss
             total_loss += loss.item()
             loss.backward()
             self.optimizer.step()
@@ -145,6 +149,11 @@ class Trainer:
                 self.writer.add_scalar(
                     "Train Loss",
                     loss.item(),
+                    batch_idx + current_epoch * (len(self.train_dataloader)),
+                )
+                self.writer.add_scalar(
+                    "Train Classification Loss",
+                    cls_loss,
                     batch_idx + current_epoch * (len(self.train_dataloader)),
                 )
                 if type(losses) == dict:
@@ -164,19 +173,22 @@ class Trainer:
         if self.validation:
             total_val_loss = 0
             total_dice_score = 0
+            total_cls_score = 0
             self.model.eval()
             print("validation of epoch ", current_epoch)
             with torch.no_grad():
                 for data, target in tqdm(self.val_dataloader):
-                    # print("data:", data)
                     data, target = data.to(self.device, dtype=torch.float32), target.to(
                         self.device, dtype=torch.float32
                     )
-                    outputs = self.model(data)
+                    target = target.unsqueeze(dim=1)
+                    cls_target = torch.any(torch.any(target, 2), 2).squeeze().float()
+                    outputs, val_cls = self.model(data)
 
                     # output = output.squeeze(dim=1)
-                    target = target.unsqueeze(dim=1)
                     val_loss, val_losses = self._get_loss(output=outputs, target=target)
+                    cls_loss = self.cls_criterion(val_cls.squeeze(), cls_target)
+                    val_loss += cls_loss
                     total_val_loss += val_loss.item()
                     if self.multi_output:
                         output = torch.concat(outputs, dim=1).mean(dim=1).unsqueeze(1)
@@ -187,10 +199,12 @@ class Trainer:
                     total_dice_score += dice_coeff_batch(
                         input=output2mask(output), target=target.unsqueeze(dim=1)
                     ).item()
+                    total_cls_score += torch.sum((val_cls.squeeze() > 0.5) == target) / len(target)
                     # break
 
         print("Validation loss=", total_val_loss / len(self.val_dataloader))
         print("Validation dice score=", total_dice_score / len(self.val_dataloader))
+        print("Validation clssification result: ", val_cls[:5])
         self.scheduler.step(total_val_loss / len(self.val_dataloader))
         if self.writer is not None:
             self.writer.add_scalar(
@@ -204,6 +218,11 @@ class Trainer:
             self.writer.add_scalar(
                 "Validation Dice score per Epoch",
                 total_dice_score / len(self.val_dataloader),
+                current_epoch,
+            )
+            self.writer.add_scalar(
+                "Validation Classification accuracy per Epoch",
+                total_cls_score / len(self.val_dataloader),
                 current_epoch,
             )
 
@@ -256,16 +275,12 @@ class Trainer:
                 # else:
                 #     val_loss = val_losses
                 total_val_loss += val_loss.item()
-                # if self.multi_output:
-                # outputs = list(outputs)
-                # outputs.append(outputs[0])
-                # outputs.append(outputs[0])
-                output = torch.concat(outputs, dim=1).mean(dim=1).unsqueeze(1)
-                # output = outputs[4]
+                if self.multi_output:
+                    output = torch.concat(outputs, dim=1).mean(dim=1).unsqueeze(1)
 
                 # output = crf(output)
                 total_dice_score += dice_coeff_batch(
-                    input=output2mask(output, threshold=0.5), target=target.unsqueeze(dim=1)
+                    input=output2mask(output), target=target.unsqueeze(dim=1)
                 ).item()
                 # break
         print("final dice loss", total_dice_score / len(self.val_dataloader))
@@ -332,10 +347,7 @@ class Trainer:
 
             if self.multi_output:
                 len_output = len(output)
-                # print(output[0].shape)
-                # print(output[0])
                 losses = self.criterion(output[0], target)
-
                 for o in output[1:]:
                     tmp_loss = self.criterion(o, target)
                     for (k, v), w in zip(tmp_loss.items(), weight):
