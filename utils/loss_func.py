@@ -6,6 +6,7 @@ import torch
 from utils.losses.bceLoss import BCE_loss
 from utils.losses.diceLoss import dice_coeff_batch
 from utils.losses.msssimLoss import msssim
+from utils.losses.focal_loss import focal_loss
 import torch.nn.functional as F
 
 
@@ -27,36 +28,6 @@ def rle_decode(mask_rle: Union[str, int], shape=(224, 224)) -> np.array:
     for lo, hi in zip(starts, ends):
         img[lo:hi] = 1
     return img.reshape(shape)
-
-
-# def dice_score(prediction: torch.tensor, ground_truth: torch.tensor, smooth=1e-7) -> float:
-#     '''
-#     Calculate Dice Score between two binary masks.
-#     '''
-#     intersection = torch.sum(prediction * ground_truth)
-#     dice = (2.0 * intersection + smooth) / (torch.sum(prediction) + torch.sum(ground_truth) + smooth)
-#     return dice
-
-
-# def calculate_dice_scores(prediction, ground_truth, img_shape=(224, 224)) -> List[float]:
-#     '''
-#     Calculate Dice scores for a dataset.
-#     '''
-#     def calculate_dice(pred, gt):
-#         if torch.sum(gt) > 0 or torch.sum(pred) > 0:
-#             return dice_score(pred, gt)
-#         else:
-#             return None  # No valid masks found, return None
-
-
-#     dice_scores = Parallel(n_jobs=-1)(
-#         delayed(calculate_dice)(pred, gt) for pred, gt in zip(prediction, ground_truth))
-
-
-#     dice_scores = [score for score in dice_scores if score is not None]  # Exclude None values
-
-
-#     return torch.mean(dice_scores)
 
 
 def dice_coeff(
@@ -95,6 +66,18 @@ def dice_loss(input: torch.Tensor, target: torch.Tensor, multiclass: bool = Fals
     return 1 - fn(input, target, reduce_batch_first=True)
 
 
+def bce_dice(input: torch.Tensor, target: torch.Tensor):
+    # print("loss input: ", input)
+    dice = 1 - dice_coeff_batch(input, target)
+    bce = BCE_loss(input, target)
+    loss_dict = {
+        "Dice Loss": dice,
+        "Binary Cross Entropy": bce,
+    }
+    # return total_loss  # , dice, bce, msssim_loss
+    return loss_dict
+
+
 def hybrid_seg_loss(input: torch.Tensor, target: torch.Tensor):
     # print("loss input: ", input)
     dice = 1 - dice_coeff_batch(input, target)
@@ -105,6 +88,22 @@ def hybrid_seg_loss(input: torch.Tensor, target: torch.Tensor):
     loss_dict = {
         "Dice Loss": dice,
         "Binary Cross Entropy": bce,
+        "MSSIM Loss": msssim_loss,
+    }
+    # return total_loss  # , dice, bce, msssim_loss
+    return loss_dict
+
+
+def hybrid_seg_loss_focal(input: torch.Tensor, target: torch.Tensor):
+    # print("loss input: ", input)
+    dice = 1 - dice_coeff_batch(input, target)
+    bce = focal_loss(input, target)
+    msssim_loss = 1 - msssim(input, target, normalize=True)
+    total_loss = dice + bce + msssim_loss
+    # print(dice, bce, msssim_loss)
+    loss_dict = {
+        "Dice Loss": dice,
+        "Focal Loss": bce,
         "MSSIM Loss": msssim_loss,
     }
     # return total_loss  # , dice, bce, msssim_loss
