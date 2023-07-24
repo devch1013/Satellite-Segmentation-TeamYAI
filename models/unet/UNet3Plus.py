@@ -921,4 +921,11 @@ class UNet3Plus_DeepSup_CGM(nn.Module):
         d3 = self.dotProduct(d3, cls_branch_max)
         d4 = self.dotProduct(d4, cls_branch_max)
         d5 = self.dotProduct(d5, cls_branch_max)
-        return F.sigmoid(d1), F.sigmoid(d2), F.sigmoid(d3), F.sigmoid(d4), F.sigmoid(d5)
+        # return F.sigmoid(d1), F.sigmoid(d2), F.sigmoid(d3), F.sigmoid(d4), F.sigmoid(d5)
+        return (
+            torch.concat(
+                (F.sigmoid(d1), F.sigmoid(d2), F.sigmoid(d3), F.sigmoid(d4), F.sigmoid(d5)), dim=1
+            )
+            .mean(dim=1)
+            .unsqueeze(1)
+        )

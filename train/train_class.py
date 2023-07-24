@@ -139,18 +139,6 @@ class Trainer:
             # print("data: ", data, "output: ",output)
             # print(target)
             # print(F.sigmoid(output))
-            # if self.multi_output:
-            #     losses = self.criterion(output[0], target)
-            #     for o in output[1:]:
-            #         tmp_loss = self.criterion(o, target)
-            #         for k ,v in tmp_loss.items():
-            #             losses[k] += v
-            # else:
-            #     losses = self.criterion(output, target)
-            # if type(losses) == dict:
-            #     loss = sum(losses.values())
-            # else:
-            #     loss = losses
             loss, losses = self._get_loss(output=output, target=target)
             total_loss += loss.item()
             loss.backward()
