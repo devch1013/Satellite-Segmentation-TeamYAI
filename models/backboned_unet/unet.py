@@ -213,6 +213,8 @@ class Unet(nn.Module):
 
         for skip_name, upsample_block in zip(self.shortcut_features[::-1], self.upsample_blocks):
             skip_features = features[skip_name]
+            # print("shape of x", x.shape)
+            # print(skip_features.shape)
             x = upsample_block(x, skip_features)
 
         x = self.final_conv(x)
@@ -272,19 +274,25 @@ if __name__ == "__main__":
 
     # simple test run
     net = Unet(backbone_name="resnet101")
+    print(net)
+    net.eval()
+    input = torch.rand(1, 3, 224, 224)
+    result = net(input)
+    print(result)
+    print(input.shape)
+    print(result.shape)
+    # criterion = nn.MSELoss()
+    # optimizer = torch.optim.Adam(net.parameters())
+    # print("Network initialized. Running a test batch.")
+    # for _ in range(1):
+    #     with torch.set_grad_enabled(True):
+    #         batch = torch.empty(1, 3, 224, 224).normal_()
+    #         targets = torch.empty(1, 21, 224, 224).normal_()
 
-    criterion = nn.MSELoss()
-    optimizer = torch.optim.Adam(net.parameters())
-    print("Network initialized. Running a test batch.")
-    for _ in range(1):
-        with torch.set_grad_enabled(True):
-            batch = torch.empty(1, 3, 224, 224).normal_()
-            targets = torch.empty(1, 21, 224, 224).normal_()
+    #         out = net(batch)
+    #         loss = criterion(out, targets)
+    #         loss.backward()
+    #         optimizer.step()
+    #     print(out.shape)
 
-            out = net(batch)
-            loss = criterion(out, targets)
-            loss.backward()
-            optimizer.step()
-        print(out.shape)
-
-    print("fasza.")
+    # print("fasza.")

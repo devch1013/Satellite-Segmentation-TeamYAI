@@ -20,7 +20,7 @@ if __name__ == "__main__":
         [
             A.RandomCrop(224, 224),
             A.HorizontalFlip(),
-            A.RandomBrightnessContrast(brightness_limit=(-0.2, 0.2), contrast_limit=(-0.2, 0.2)),
+            A.RandomBrightnessContrast(brightness_limit=(-0.4, 0.4), contrast_limit=(-0.4, 0.4)),
             A.RandomGamma(gamma_limit=(90, 110)),
             A.RandomRotate90(p=0.7),
             A.Normalize(),

@@ -4,7 +4,7 @@ import numpy as np
 # from utils.loss_func import calculate_dice_scores
 from torch import optim
 import torch.nn.functional as F
-from .loss_func import hybrid_seg_loss, hybrid_seg_loss_focal
+from .loss_func import hybrid_seg_loss, hybrid_seg_loss_focal, bce_dice
 
 
 def get_optimizer(model, cfg):
@@ -65,6 +65,8 @@ def get_criterion(cfg):
     print(criterion_name)
     if criterion_name == "crossentropyloss":
         criterion = torch.nn.BCEWithLogitsLoss()
+    elif criterion_name == "bce-dice":
+        criterion = bce_dice
     elif criterion_name == "hybrid-seg-loss":
         criterion = hybrid_seg_loss
     elif criterion_name == "hybrid-seg-loss-focal":

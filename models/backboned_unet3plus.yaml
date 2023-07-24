@@ -1,4 +1,4 @@
-model-name: Unet3plus_deepsup_shallower
+model-name: backboned_unet3plus_not_freeze_resnet152
 device: cuda
 model:
   n_channels: 3
@@ -14,12 +14,12 @@ model:
 
 train:
   epoch: 1000
-  batch-size: 16
+  batch-size: 32
   criterion:
     # name: dice
     # name: crossentropyloss
     name: hybrid-seg-loss
-    weight: [2,1,1]
+    weight: [1,1,1]
   optimizer:
     name: adamw
     learning-rate: 0.00001

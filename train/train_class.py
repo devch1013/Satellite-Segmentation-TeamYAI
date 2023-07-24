@@ -182,6 +182,7 @@ class Trainer:
             print("validation of epoch ", current_epoch)
             with torch.no_grad():
                 for data, target in tqdm(self.val_dataloader):
+                    # print("data:", data)
                     data, target = data.to(self.device, dtype=torch.float32), target.to(
                         self.device, dtype=torch.float32
                     )
@@ -190,11 +191,6 @@ class Trainer:
                     # output = output.squeeze(dim=1)
                     target = target.unsqueeze(dim=1)
                     val_loss, val_losses = self._get_loss(output=outputs, target=target)
-                    # val_losses = self.criterion(output, target)
-                    # if type(val_losses) == dict:
-                    #     val_loss = sum(val_losses.values())
-                    # else:
-                    #     val_loss = val_losses
                     total_val_loss += val_loss.item()
                     if self.multi_output:
                         output = torch.concat(outputs, dim=1).mean(dim=1).unsqueeze(1)
@@ -229,7 +225,7 @@ class Trainer:
                 # print("output: ", outputs.shape)
                 outputs = list(outputs)
                 outputs.append(output)
-                print(len(outputs))
+                # print(len(outputs))
                 for o in outputs:
                     output_tensor.append(output2mask(o[:5]).to(dtype=torch.int32))
                 output_tensor = torch.concat(output_tensor, dim=0)
@@ -345,7 +341,10 @@ class Trainer:
 
             if self.multi_output:
                 len_output = len(output)
+                # print(output[0].shape)
+                # print(output[0])
                 losses = self.criterion(output[0], target)
+
                 for o in output[1:]:
                     tmp_loss = self.criterion(o, target)
                     for (k, v), w in zip(tmp_loss.items(), weight):
