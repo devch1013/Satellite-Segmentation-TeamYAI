@@ -1,18 +1,18 @@
-from train.train_class import Trainer
-from models.MAResUnet.MAResUnet import MAResUNet
+from train.train_class_maresunet import Trainer
+from models.MAResUnet.MAResUnetCGM import MAResUNetCGM
 import torchvision.transforms as transforms
 import albumentations as A
 from albumentations.pytorch import ToTensorV2
 from utils.dataloader import SatelliteDataset, validate_separator
 
-model_name = "MAResUnet"
+model_name = "MAResUnetCGM"
 root_dir = "/root/dacon"
 
 
 if __name__ == "__main__":
     train_class = Trainer(base_dir=root_dir, config_dir=f"models/{model_name}.yaml")
     train_class.set_model(
-        MAResUNet,
+        MAResUNetCGM,
         # state_dict="/home/work/Dacon-YAI/devch/models/ckpt/unet3plus_deepsup_cgm/Unet3plus_deepsup_cgm_shallow_266_07-21-14:22",
     )
 
@@ -24,13 +24,12 @@ if __name__ == "__main__":
             A.RandomGamma(gamma_limit=(90, 110)),
             A.augmentations.transforms.CLAHE(clip_limit=4.0, tile_grid_size=(8, 8)),
             A.augmentations.transforms.ColorJitter(p=0.5),
-            # A.augmentations.transforms.RandomShadow(
-            #     shadow_roi=(0, 0, 1, 1),
-            #     num_shadows_lower=10,
-            #     num_shadows_upper=20,
-            #     shadow_dimension=5,
-            #     p=0.6,
-            # ),
+            A.augmentations.transforms.RandomShadow(
+                shadow_roi=(0, 0, 1, 1),
+                num_shadows_lower=10,
+                num_shadows_upper=20,
+                shadow_dimension=5,
+            ),
             A.RandomRotate90(p=0.7),
             A.Normalize(),
             ToTensorV2(),

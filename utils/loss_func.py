@@ -7,6 +7,7 @@ from utils.losses.bceLoss import BCE_loss
 from utils.losses.diceLoss import dice_coeff_batch
 from utils.losses.msssimLoss import msssim
 from utils.losses.focal_loss import focal_loss
+from utils.losses.hausdorff_loss import hausdorff_loss
 import torch.nn.functional as F
 
 
@@ -107,4 +108,21 @@ def hybrid_seg_loss_focal(input: torch.Tensor, target: torch.Tensor):
         "MSSIM Loss": msssim_loss,
     }
     # return total_loss  # , dice, bce, msssim_loss
+    return loss_dict
+
+
+def dice_bce_hausdorff(input: torch.Tensor, target: torch.Tensor):
+    # print("loss input: ", input)
+    dice = 1 - dice_coeff_batch(input, target)
+    bce = focal_loss(input, target)
+    # print(target)
+    hd_loss = hausdorff_loss(input, target.to(dtype=torch.long))
+    total_loss = dice + bce + hd_loss
+    # print(dice, bce, hausdorff_loss)
+    loss_dict = {
+        "Dice Loss": dice,
+        "Focal Loss": bce,
+        "HD Loss": hd_loss,
+    }
+    # return total_loss  # , dice, bce, hausdorff_loss
     return loss_dict
