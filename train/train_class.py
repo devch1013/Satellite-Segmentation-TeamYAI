@@ -68,7 +68,7 @@ class Trainer:
         self._set_train_func()
 
     def set_pretrained_model(self, model):
-        self.model = model
+        self.model = model.to(self.device)
         self._set_train_func()
 
     def _set_train_func(self):
@@ -134,7 +134,7 @@ class Trainer:
             self.optimizer.zero_grad()
             # print(data)
             output = self.model(data)
-
+            output = F.sigmoid(output)
             target = target.unsqueeze(dim=1)
 
             loss, losses = self._get_loss(output=output, target=target)
@@ -173,6 +173,7 @@ class Trainer:
                         self.device, dtype=torch.float32
                     )
                     outputs = self.model(data)
+                    outputs = F.sigmoid(outputs)
 
                     # output = output.squeeze(dim=1)
                     target = target.unsqueeze(dim=1)
