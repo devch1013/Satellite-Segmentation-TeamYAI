@@ -4,7 +4,7 @@ import numpy as np
 # from utils.loss_func import calculate_dice_scores
 from torch import optim
 import torch.nn.functional as F
-from .loss_func import hybrid_seg_loss, hybrid_seg_loss_focal, bce_dice
+from .loss_func import hybrid_seg_loss, hybrid_seg_loss_focal, bce_dice, dice_bce_hausdorff
 
 
 def get_optimizer(model, cfg):
@@ -71,6 +71,8 @@ def get_criterion(cfg):
         criterion = hybrid_seg_loss
     elif criterion_name == "hybrid-seg-loss-focal":
         criterion = hybrid_seg_loss_focal
+    elif criterion_name == "dice-bce-hausdorff":
+        criterion = dice_bce_hausdorff
 
     # elif criterion_name == "dice":
     #     criterion = calculate_dice_scores

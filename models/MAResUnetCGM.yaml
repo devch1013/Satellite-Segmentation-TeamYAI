@@ -1,4 +1,4 @@
-model-name: MAResUnet_clahe
+model-name: MAResUnetCGM_msssim
 device: cuda
 model:
   num_channels: 3
@@ -13,19 +13,17 @@ train:
     # name: dice
     # name: crossentropyloss
     name: hybrid-seg-loss
-
-    # name: dice-bce-hausdorff
     # name: bce-dice
-    weight: [1,5,5]
+    weight: [1,1,1]
   optimizer:
     name: adamw
-    learning-rate: 0.000001
+    learning-rate: 0.0001
     args:
       betas: [0.9, 0.999]
   lr_scheduler:
     name: plateau
     args:
-      patience: 15
+      patience: 20
       factor: 0.8
     # name: multisteplr
     # args:
