@@ -1,37 +1,34 @@
-from train.train_class import Trainer
+from train.train_class_mask2mask import Trainer
+from models.unet.mask2mask import Mask2Mask
 from models.MAResUnet.MAResUnet import MAResUNet
 import torchvision.transforms as transforms
 import albumentations as A
 from albumentations.pytorch import ToTensorV2
 from utils.dataloader import SatelliteDataset, validate_separator
+import torch
 
-model_name = "MAResUnet_cont"
+model_name = "MAResUnet_mask2mask"
 root_dir = "/root/dacon"
 
+device = "cuda"
 
 if __name__ == "__main__":
     train_class = Trainer(base_dir=root_dir, config_dir=f"models/{model_name}.yaml")
-    train_class.set_model(
-        MAResUNet,
-        state_dict="/root/dacon/models/ckpt/MAResUnet/MAResUnet_msssim_541_07-24-16:40",
-    )
+    cfg = train_class.cfg
+    main_model = MAResUNet(**cfg["model"])
+    filename = "/root/dacon/models/ckpt/MAResUnet/MAResUnet_msssim_541_07-24-16:40"
+    main_model.load_state_dict(torch.load(filename))
+
+    model = Mask2Mask(main_model).to(device)
+
+    train_class.set_pretrained_model(model)
 
     transform = A.Compose(
         [
             A.RandomCrop(224, 224),
             A.HorizontalFlip(),
-
-            # A.RandomBrightnessContrast(brightness_limit=(-0.2, 0.2), contrast_limit=(-0.2, 0.2)),
+            # A.RandomBrightnessContrast(brightness_limit=(-0.4, 0.4), contrast_limit=(-0.4, 0.4)),
             # A.RandomGamma(gamma_limit=(90, 110)),
-            A.augmentations.transforms.CLAHE(clip_limit=4.0, tile_grid_size=(8, 8)),
-            # A.augmentations.transforms.ColorJitter(p=0.5),
-            # A.augmentations.transforms.RandomShadow(
-            #     shadow_roi=(0, 0, 1, 1),
-            #     num_shadows_lower=10,
-            #     num_shadows_upper=20,
-            #     shadow_dimension=5,
-            #     p=0.6,
-            # ),
             A.RandomRotate90(p=0.7),
             A.Normalize(),
             ToTensorV2(),
