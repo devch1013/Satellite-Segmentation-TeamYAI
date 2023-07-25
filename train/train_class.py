@@ -47,6 +47,7 @@ class Trainer:
         self.save_ckpt = True
         Path(os.path.join(save_dir)).mkdir(parents=True, exist_ok=True)
         self.save_dir = save_dir
+        self.best_ckpt = []
 
     def enable_tensorboard(self, log_dir: str = None, save_image_log=False):
         self.save_image_log = save_image_log
@@ -191,7 +192,8 @@ class Trainer:
                     # break
 
         print("Validation loss=", total_val_loss / len(self.val_dataloader))
-        print("Validation dice score=", total_dice_score / len(self.val_dataloader))
+        validation_score = total_dice_score / len(self.val_dataloader)
+        print("Validation dice score=", validation_score)
         self.scheduler.step(total_val_loss / len(self.val_dataloader))
         if self.writer is not None:
             self.writer.add_scalar(
@@ -204,7 +206,7 @@ class Trainer:
             )
             self.writer.add_scalar(
                 "Validation Dice score per Epoch",
-                total_dice_score / len(self.val_dataloader),
+                validation_score,
                 current_epoch,
             )
 
@@ -231,10 +233,25 @@ class Trainer:
             current_time = datetime.datetime.now() + datetime.timedelta(hours=9)
             current_time = current_time.strftime("%m-%d-%H:%M")
             model_name = self.cfg["model-name"]
-            torch.save(
-                self.model.state_dict(),
-                f"{self.save_dir}/{model_name}_{current_epoch}_{current_time}",
-            )
+            ckpt_name = f"{model_name}_{current_epoch}_{current_time}_{validation_score}"
+            if len(self.best_ckpt) < 5:
+                torch.save(
+                    self.model.state_dict(),
+                    f"{self.save_dir}/{ckpt_name}",
+                )
+                self.best_ckpt.append({"ckpt_name": ckpt_name, "score": validation_score})
+
+            else:
+                score_list = [obj["score"] for obj in self.best_ckpt]
+                if validation_score > min(score_list):
+                    drop_idx = score_list.index((min(score_list)))
+                    drop_name = self.best_ckpt[drop_idx]["ckpt_name"]
+                    os.remove(f"{self.save_dir}/{drop_name}")
+                    self.best_ckpt[drop_idx] = {"ckpt_name": ckpt_name, "score": validation_score}
+                    torch.save(
+                        self.model.state_dict(),
+                        f"{self.save_dir}/{ckpt_name}",
+                    )
 
     def validate(self):
         total_val_loss = 0

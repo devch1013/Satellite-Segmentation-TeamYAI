@@ -20,10 +20,10 @@ if __name__ == "__main__":
         [
             A.RandomCrop(224, 224),
             A.HorizontalFlip(),
-            A.RandomBrightnessContrast(brightness_limit=(-0.2, 0.2), contrast_limit=(-0.2, 0.2)),
-            A.RandomGamma(gamma_limit=(90, 110)),
+            # A.RandomBrightnessContrast(brightness_limit=(-0.2, 0.2), contrast_limit=(-0.2, 0.2)),
+            # A.RandomGamma(gamma_limit=(90, 110)),
             A.augmentations.transforms.CLAHE(clip_limit=4.0, tile_grid_size=(8, 8)),
-            A.augmentations.transforms.ColorJitter(p=0.5),
+            # A.augmentations.transforms.ColorJitter(p=0.5),
             # A.augmentations.transforms.RandomShadow(
             #     shadow_roi=(0, 0, 1, 1),
             #     num_shadows_lower=10,
