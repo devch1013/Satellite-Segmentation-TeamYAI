@@ -9,16 +9,23 @@ from torchvision import models
 
 
 class UNet(nn.Module):
-    def __init__(self, n_channels=3, n_classes=1, bilinear=True, feature_scale=4, 
-                 is_deconv=True, is_batchnorm=True):
-        super(UNet, self).__init__()        
+    def __init__(
+        self,
+        n_channels=3,
+        n_classes=1,
+        bilinear=True,
+        feature_scale=4,
+        is_deconv=True,
+        is_batchnorm=True,
+    ):
+        super(UNet, self).__init__()
         self.n_channels = n_channels
         self.n_classes = n_classes
         self.bilinear = bilinear
         self.feature_scale = feature_scale
         self.is_deconv = is_deconv
         self.is_batchnorm = is_batchnorm
-        filters = [64, 128, 256, 512, 1024]
+        filters = [16, 32, 64, 128, 256]
 
         # downsampling
         self.conv1 = unetConv2(self.n_channels, filters[0], self.is_batchnorm)
@@ -45,18 +52,16 @@ class UNet(nn.Module):
         # initialise weights
         for m in self.modules():
             if isinstance(m, nn.Conv2d):
-                init_weights(m, init_type='kaiming')
+                init_weights(m, init_type="kaiming")
             elif isinstance(m, nn.BatchNorm2d):
-                init_weights(m, init_type='kaiming')
+                init_weights(m, init_type="kaiming")
 
-
-    def dotProduct(self,seg,cls):
+    def dotProduct(self, seg, cls):
         B, N, H, W = seg.size()
         seg = seg.view(B, N, H * W)
         final = torch.einsum("ijk,ij->ijk", [seg, cls])
         final = final.view(B, N, H, W)
         return final
-
 
     def forward(self, inputs):
         conv1 = self.conv1(inputs)  # 16*512*1024
