@@ -11,6 +11,7 @@ import torch
 import torch.nn as nn
 import numpy as np
 from scipy.signal import gaussian
+import torchvision
 
 
 class EdgeFilter(nn.Module):
@@ -212,11 +213,17 @@ class Mask2Mask(nn.Module):
     def __init__(self, main_model):
         super(Mask2Mask, self).__init__()
         self.main_model = main_model
-        for param in self.main_model.parameters():
-            param.requires_grad = False
+        # for param in self.main_model.parameters():
+        #     param.requires_grad = False
         self.additive_model = UNet(n_channels=2, n_classes=1)
         self.cls_model = ResnetCls()
         self.edge_model = GradLayer()
+        # self.gray_transform = torchvision.transforms.Grayscale(1)
+        self.freeze_main_model()
+
+    def freeze_main_model(self):
+        for param in self.main_model.parameters():
+            param.requires_grad = False
 
     def forward(self, x):
         cls_result = self.cls_model(x)
@@ -226,6 +233,7 @@ class Mask2Mask(nn.Module):
         # print(output.shape)
         # new_input = torch.concat((x, output), dim=1)
         # print(output.shape)
+        # gray_img = self.gray_transform(x)
         edge = self.edge_model(x)
         new_input = torch.concat((edge, output), dim=1)
         output = self.additive_model(new_input)
