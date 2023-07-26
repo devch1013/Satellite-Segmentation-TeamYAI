@@ -5,7 +5,7 @@ import albumentations as A
 from albumentations.pytorch import ToTensorV2
 from utils.dataloader import SatelliteDataset, validate_separator
 
-model_name = "MAResUnet_cont"
+model_name = "MAResUnet"
 root_dir = "/root/dacon"
 
 
@@ -13,16 +13,15 @@ if __name__ == "__main__":
     train_class = Trainer(base_dir=root_dir, config_dir=f"models/{model_name}.yaml")
     train_class.set_model(
         MAResUNet,
-        state_dict="/root/dacon/models/ckpt/MAResUnet/MAResUnet_msssim_541_07-24-16:40",
+        # state_dict="/root/dacon/models/ckpt/MAResUnet/MAResUnet_msssim_541_07-24-16:40",
     )
 
     transform = A.Compose(
         [
             A.RandomCrop(224, 224),
             A.HorizontalFlip(),
-
-            # A.RandomBrightnessContrast(brightness_limit=(-0.2, 0.2), contrast_limit=(-0.2, 0.2)),
-            # A.RandomGamma(gamma_limit=(90, 110)),
+            A.RandomBrightnessContrast(brightness_limit=(-0.2, 0.2), contrast_limit=(-0.2, 0.2)),
+            A.RandomGamma(gamma_limit=(90, 110)),
             A.augmentations.transforms.CLAHE(clip_limit=4.0, tile_grid_size=(8, 8)),
             # A.augmentations.transforms.ColorJitter(p=0.5),
             # A.augmentations.transforms.RandomShadow(

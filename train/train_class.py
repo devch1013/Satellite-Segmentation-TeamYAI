@@ -135,7 +135,6 @@ class Trainer:
             self.optimizer.zero_grad()
             # print(data)
             output = self.model(data)
-            output = F.sigmoid(output)
             target = target.unsqueeze(dim=1)
 
             loss, losses = self._get_loss(output=output, target=target)
@@ -174,7 +173,6 @@ class Trainer:
                         self.device, dtype=torch.float32
                     )
                     outputs = self.model(data)
-                    outputs = F.sigmoid(outputs)
 
                     # output = output.squeeze(dim=1)
                     target = target.unsqueeze(dim=1)
