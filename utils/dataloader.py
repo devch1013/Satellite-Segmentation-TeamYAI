@@ -9,6 +9,7 @@ from utils.utils import rle_decode
 import numpy as np
 import albumentations as A
 from albumentations.pytorch import ToTensorV2
+import os
 
 
 class MyDataLoader:
@@ -147,6 +148,44 @@ def validate_separator(
         get_pandas=True,
     )
     return train_dataset, validate_dataset
+
+
+class ValidateDataset(Dataset):
+    def __init__(
+        self,
+        val_img_dir="data/val_img/",
+        val_msk_dir="data/val_mask/",
+        infer=False,
+        transform=None,
+    ):
+        self.transform = transform
+        self.infer = infer
+        self.val_img_list = os.listdir(val_img_dir)
+        self.val_msk_list = os.listdir(val_msk_dir)
+        self.val_img_dir = val_img_dir
+        self.val_msk_dir = val_msk_dir
+
+    def __len__(self):
+        return len(self.val_img_list)
+
+    def __getitem__(self, idx):
+        image = cv2.imread(self.val_img_dir + self.val_img_list[idx])
+
+        # print(img_path.replace(".","data"))
+        image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+        if self.infer:
+            if self.transform:
+                image = self.transform(image=image)["image"]
+            return image
+
+        mask = cv2.imread(self.val_msk_dir + self.val_msk_list[idx], 0)
+
+        if self.transform:
+            augmented = self.transform(image=image, mask=mask / 255)
+            image = augmented["image"]
+            mask = augmented["mask"]
+            # print(image.shape)
+        return image, mask
 
 
 if __name__ == "__main__":

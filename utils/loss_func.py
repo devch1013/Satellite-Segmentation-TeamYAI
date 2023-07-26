@@ -114,14 +114,14 @@ def hybrid_seg_loss_focal(input: torch.Tensor, target: torch.Tensor):
 def dice_bce_hausdorff(input: torch.Tensor, target: torch.Tensor):
     # print("loss input: ", input)
     dice = 1 - dice_coeff_batch(input, target)
-    bce = focal_loss(input, target)
+    bce = BCE_loss(input, target)
     # print(target)
     hd_loss = hausdorff_loss(input, target.to(dtype=torch.long))
     total_loss = dice + bce + hd_loss
     # print(dice, bce, hausdorff_loss)
     loss_dict = {
         "Dice Loss": dice,
-        "Focal Loss": bce,
+        "BCE Loss": bce,
         "HD Loss": hd_loss,
     }
     # return total_loss  # , dice, bce, hausdorff_loss
