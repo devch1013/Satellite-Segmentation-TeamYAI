@@ -293,12 +293,11 @@ class Trainer:
                 )
                 # print(data.shape)
                 target = target.unsqueeze(dim=1)
-                outputs, val_cls = self.model(data)
-                if self.multi_output:
-                    output = torch.concat(outputs, dim=1).mean(dim=1).unsqueeze(1)
-                else:
-                    output = outputs
-                print(output.max())
+                output, val_cls = self.model(data)
+                # print(output.max())
+                # for idx, cla in enumerate(val_cls):
+                #     if cla < 0.7:
+                #         output[idx] = torch.zeros(1, 224, 224)
                 cv2.imwrite(
                     "outputmask.png",
                     output2mask(output, threshold=0.5)[0].squeeze(0).cpu().numpy() * 255,
@@ -307,7 +306,7 @@ class Trainer:
                     "target.png",
                     target[0].squeeze().cpu().numpy() * 255,
                 )
-                print(data.shape)
+                # print(data.shape)
                 cv2.imwrite(
                     "input.png",
                     data[0].permute(1, 2, 0).cpu().numpy() * 255,
@@ -315,7 +314,7 @@ class Trainer:
                 dice = dice_coeff_batch(
                     input=output2mask(output), target=target.unsqueeze(dim=1)
                 ).item()
-                print(dice)
+                # print(dice)
                 total_dice_score += dice
                 # total_dice_score += dice_loss(
                 #     input=output2mask(output).squeeze(), target=target.squeeze()

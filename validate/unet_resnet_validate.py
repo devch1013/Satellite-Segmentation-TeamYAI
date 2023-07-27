@@ -18,7 +18,7 @@ if __name__ == "__main__":
     # )
 
     model = Unet(backbone_name="resnet152", n_classes=1)
-    filename = "/root/dacon/models/ckpt/checkpoint_resnet152_epoch1219.pth"
+    filename = "/root/dacon/models/ckpt/checkpoint_resnet152_epoch1257.pth"
     # filename = "/root/dacon/models/ckpt/checkpoint_resnet152_epoch282.pth"
     state_dict = torch.load(filename, map_location=device)
     mask_values = state_dict.pop("mask_values", [0, 1])

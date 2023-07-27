@@ -183,8 +183,7 @@ class ValidateDataset(Dataset):
         # img[:, :, 0] = clahe.apply(img[:, :, 0])
         # img = cv2.cvtColor(img, cv2.COLOR_LAB2RGB)
         image = np.asarray(image)
-        if (image > 1).any():
-            image = image / 255.0
+        image = image / 255.0
         if self.infer:
             if self.transform:
                 image = self.transform(image=image)["image"]
@@ -195,6 +194,44 @@ class ValidateDataset(Dataset):
         # print(mask.max())
         # if (mask > 1).any():
         mask = mask / 255.0
+        if self.transform:
+            augmented = self.transform(image=image, mask=mask)
+            image = augmented["image"]
+            mask = augmented["mask"]
+            # print(image.shape)
+        return image, mask
+
+
+class TestDataset(Dataset):
+    def __init__(self, data="data/test.csv", transform=None, test_file_dir="data/test_img"):
+        self.transform = transform
+        self.data = pd.read_csv(data)
+        self.test_file_dir = test_file_dir
+
+    def __len__(self):
+        return len(self.data)
+
+    def __getitem__(self, idx):
+        img_path = self.data.iloc[idx, 1]
+        image = cv2.imread(self.test_file_dir + img_path[1:])
+
+        # print(img_path.replace(".","data"))
+        image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+        # img = cv2.cvtColor(image, cv2.COLOR_RGB2LAB)
+        # clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
+        # img[:, :, 0] = clahe.apply(img[:, :, 0])
+        # img = cv2.cvtColor(img, cv2.COLOR_LAB2RGB)
+        image = np.asarray(image)
+        image = image / 255.0
+        if self.infer:
+            if self.transform:
+                image = self.transform(image=image)["image"]
+            return image
+
+        mask_rle = self.data.iloc[idx, 2]
+        mask = rle_decode(mask_rle, (image.shape[0], image.shape[1]))
+        # print(mask.max())
+        # if (mask > 1).any():
         if self.transform:
             augmented = self.transform(image=image, mask=mask)
             image = augmented["image"]
