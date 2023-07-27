@@ -6,7 +6,7 @@ from albumentations.pytorch import ToTensorV2
 from utils.dataloader import SatelliteDataset, validate_separator, ValidateDataset
 import torch
 
-model_name = "unet3plus_deepsup"
+model_name = "resnet_unet_test"
 root_dir = "/root/dacon"
 device = "cuda"
 
@@ -18,8 +18,8 @@ if __name__ == "__main__":
     # )
 
     model = Unet(backbone_name="resnet152", n_classes=1)
-    # filename = "/root/dacon/models/ckpt/checkpoint_resnet152_epoch742.pth"
-    filename = "/root/dacon/models/ckpt/checkpoint_resnet152_epoch282.pth"
+    filename = "/root/dacon/models/ckpt/checkpoint_resnet152_epoch742.pth"
+    # filename = "/root/dacon/models/ckpt/checkpoint_resnet152_epoch282.pth"
     state_dict = torch.load(filename, map_location=device)
     mask_values = state_dict.pop("mask_values", [0, 1])
     model.load_state_dict(state_dict)

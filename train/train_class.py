@@ -264,8 +264,7 @@ class Trainer:
                 data, target = data.to(self.device, dtype=torch.float32), target.to(
                     self.device, dtype=torch.float32
                 )
-                output = self.model(data)
-                output = F.interpolate(output, (224, 224), mode="bilinear")
+                output = F.sigmoid(self.model(data))
                 # output = F.interpolate(output, (data.shape[1], data.shape[0]), mode="bilinear")
                 target = target.unsqueeze(dim=1)
                 # val_loss, val_losses = self._get_loss(output=outputs, target=target)
