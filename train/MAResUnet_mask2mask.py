@@ -16,7 +16,7 @@ if __name__ == "__main__":
     train_class = Trainer(base_dir=root_dir, config_dir=f"models/{model_name}.yaml")
     cfg = train_class.cfg
     main_model = MAResUNet(**cfg["model"])
-    filename = "/root/dacon/models/ckpt/MAResUnet_clahe_425_07-26-12_27_0.8554879277944565"
+    filename = "/root/dacon/models/ckpt/MAResUnet_clahe_cont_4_07-27-14_48_0.8467312263590949"
     main_model.load_state_dict(torch.load(filename))
 
     model = Mask2Mask(main_model).to(device)
@@ -38,7 +38,9 @@ if __name__ == "__main__":
 
     validate_transform = A.Compose(
         [
-            A.RandomCrop(224, 224),
+            A.augmentations.crops.transforms.CenterCrop(
+                height=224, width=224, always_apply=True, p=1
+            ),
             A.augmentations.transforms.CLAHE(clip_limit=4.0, tile_grid_size=(8, 8)),
             A.Normalize(),
             ToTensorV2(),

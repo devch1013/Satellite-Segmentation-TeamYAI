@@ -1,28 +1,31 @@
-from train.train_class import Trainer
-from models.backboned_unet.unet import Unet
+from train.train_class_mask2mask import Trainer
+from models.unet.mask2mask import Mask2Mask
+from models.MAResUnet.MAResUnet import MAResUNet
 import torchvision.transforms as transforms
 import albumentations as A
 from albumentations.pytorch import ToTensorV2
-from utils.dataloader import SatelliteDataset, validate_separator, ValidateDataset
+from utils.dataloader2 import SatelliteDataset, validate_separator, ValidateDataset
 import torch
+import yaml
 
-model_name = "unet3plus_deepsup"
+model_name = "MAResUnet_mask2mask"
 root_dir = "/root/dacon"
 device = "cuda"
 
 if __name__ == "__main__":
+    with open("models/MAResUnet.yaml") as f:
+        cfg = yaml.safe_load(f)
     train_class = Trainer(base_dir=root_dir, config_dir=f"models/{model_name}.yaml")
     # train_class.set_model(
     #     Unet(backbone_name="resnet152", n_classes=1),
     #     state_dict="/root/dacon/models/ckpt/checkpoint_epoch740.pth",
     # )
-
-    model = Unet(backbone_name="resnet152", n_classes=1)
-    filename = "/root/dacon/models/ckpt/checkpoint_resnet152_epoch1219.pth"
-    # filename = "/root/dacon/models/ckpt/checkpoint_resnet152_epoch282.pth"
+    main_model = MAResUNet(**cfg["model"])
+    model = Mask2Mask(main_model=main_model)
+    filename = "/root/dacon/models/ckpt/MAResUnet_mask2mask/MAResUnet_mask2mask_lossweight_109_07-27-19:14_0.8364231565168926"
     state_dict = torch.load(filename, map_location=device)
-    mask_values = state_dict.pop("mask_values", [0, 1])
     model.load_state_dict(state_dict)
+    model = model.to(device)
 
     train_class.set_pretrained_model(model)
 
@@ -54,7 +57,7 @@ if __name__ == "__main__":
         data_folder="data",
         transform=transform,
         val_transform=validate_transform,
-        validation_ratio=0.9,
+        validation_ratio=0.95,
     )
     validate_dataset = ValidateDataset(transform=validate_transform)
     train_class.set_train_dataloader(dataset=train_dataset)

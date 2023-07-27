@@ -16,6 +16,7 @@ from models.layers import VIT
 import torch.nn.functional as F
 from utils.losses.diceLoss import dice_coeff_batch
 import cv2
+from utils.loss_func import dice_loss
 
 # from models.CRF.crf_model import crf
 
@@ -263,32 +264,35 @@ class Trainer:
                 data, target = data.to(self.device, dtype=torch.float32), target.to(
                     self.device, dtype=torch.float32
                 )
-                output = self.model(data)
-                output = F.interpolate(output, (224, 224), mode="bilinear")
+                output = F.sigmoid(self.model(data))
                 # output = F.interpolate(output, (data.shape[1], data.shape[0]), mode="bilinear")
                 target = target.unsqueeze(dim=1)
                 # val_loss, val_losses = self._get_loss(output=outputs, target=target)
                 # total_val_loss += val_loss.item()
                 # output = torch.concat(outputs, dim=1).mean(dim=1).unsqueeze(1)
+                # print(output[0])
                 cv2.imwrite(
                     "outputmask.png",
-                    output2mask(output, threshold=0.5)[0].squeeze().cpu().numpy() * 255,
+                    output2mask(output[0], threshold=0.5).squeeze(0).cpu().numpy() * 255,
                 )
                 cv2.imwrite(
                     "target.png",
                     target[0].squeeze().cpu().numpy() * 255,
                 )
-                print(data.shape)
+                # print(data.shape)
                 cv2.imwrite(
                     "input.png",
                     data[0].permute(1, 2, 0).cpu().numpy() * 255,
                 )
                 # print(output.shape)
                 # print(target.shape)
+                # dice = dice_loss(
+                #     input=output2mask(output, threshold=0.5).squeeze(), target=target.squeeze()
+                # ).item()
                 dice = dice_coeff_batch(
-                    input=output2mask(output, threshold=0.5), target=target
+                    input=output2mask(output), target=target.unsqueeze(dim=1)
                 ).item()
-                print(dice)
+                # print(dice)
                 total_dice_score += dice
                 # break
         print("final dice loss", total_dice_score / len(self.val_dataloader))

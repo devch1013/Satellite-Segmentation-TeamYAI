@@ -15,6 +15,8 @@ from utils.dataloader import MyDataLoader
 from models.layers import VIT
 import torch.nn.functional as F
 from utils.losses.diceLoss import dice_coeff_batch
+from utils.loss_func import dice_loss
+import cv2
 
 # from models.CRF.crf_model import crf
 
@@ -168,7 +170,6 @@ class Trainer:
                     "learning rate", self.optimizer.param_groups[0]["lr"], current_epoch
                 )
             batch_idx += 1
-            # break
 
         print("Train loss=", total_loss / len(self.train_dataloader))
         if self.validation:
@@ -196,11 +197,17 @@ class Trainer:
                         output = torch.concat(outputs, dim=1).mean(dim=1).unsqueeze(1)
                     else:
                         output = outputs
+                    for idx, cla in enumerate(val_cls):
+                        if cla < 0.7:
+                            output[idx] = torch.zeros(1, 224, 224)
 
                     # output = crf(output)
                     total_dice_score += dice_coeff_batch(
                         input=output2mask(output), target=target.unsqueeze(dim=1)
                     ).item()
+                    # total_dice_score += dice_loss(
+                    #     input=output2mask(output).squeeze(), target=target.squeeze()
+                    # ).item()
                     total_cls_score += torch.sum((val_cls.squeeze() > 0.5) == cls_target) / len(
                         target
                     )
@@ -284,25 +291,35 @@ class Trainer:
                 data, target = data.to(self.device, dtype=torch.float32), target.to(
                     self.device, dtype=torch.float32
                 )
-                outputs = self.model(data)
-
-                # output = output.squeeze(dim=1)
+                # print(data.shape)
                 target = target.unsqueeze(dim=1)
-                val_loss, val_losses = self._get_loss(output=outputs, target=target)
-                # val_losses = self.criterion(output, target)
-                # if type(val_losses) == dict:
-                #     val_loss = sum(val_losses.values())
-                # else:
-                #     val_loss = val_losses
-                total_val_loss += val_loss.item()
+                outputs, val_cls = self.model(data)
                 if self.multi_output:
                     output = torch.concat(outputs, dim=1).mean(dim=1).unsqueeze(1)
-
-                # output = crf(output)
-                total_dice_score += dice_coeff_batch(
+                else:
+                    output = outputs
+                print(output.max())
+                cv2.imwrite(
+                    "outputmask.png",
+                    output2mask(output, threshold=0.5)[0].squeeze(0).cpu().numpy() * 255,
+                )
+                cv2.imwrite(
+                    "target.png",
+                    target[0].squeeze().cpu().numpy() * 255,
+                )
+                print(data.shape)
+                cv2.imwrite(
+                    "input.png",
+                    data[0].permute(1, 2, 0).cpu().numpy() * 255,
+                )
+                dice = dice_coeff_batch(
                     input=output2mask(output), target=target.unsqueeze(dim=1)
                 ).item()
-                # break
+                print(dice)
+                total_dice_score += dice
+                # total_dice_score += dice_loss(
+                #     input=output2mask(output).squeeze(), target=target.squeeze()
+                # ).item()
         print("final dice loss", total_dice_score / len(self.val_dataloader))
 
     def inference(self, x):

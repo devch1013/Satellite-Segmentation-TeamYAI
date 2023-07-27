@@ -178,11 +178,11 @@ class ValidateDataset(Dataset):
 
         # print(img_path.replace(".","data"))
         image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-        img = cv2.cvtColor(image, cv2.COLOR_RGB2LAB)
-        clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
-        img[:, :, 0] = clahe.apply(img[:, :, 0])
-        img = cv2.cvtColor(img, cv2.COLOR_LAB2RGB)
-        image = np.asarray(img)
+        # img = cv2.cvtColor(image, cv2.COLOR_RGB2LAB)
+        # clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
+        # img[:, :, 0] = clahe.apply(img[:, :, 0])
+        # img = cv2.cvtColor(img, cv2.COLOR_LAB2RGB)
+        image = np.asarray(image)
         if (image > 1).any():
             image = image / 255.0
         if self.infer:
@@ -201,57 +201,6 @@ class ValidateDataset(Dataset):
             mask = augmented["mask"]
             # print(image.shape)
         return image, mask
-
-
-# class ValidateDataset(Dataset):
-#     def __init__(
-#         self,
-#         val_img_dir="data/test.csv",
-#         infer=False,
-#         transform=None,
-#         use_rate=1,
-#     ):
-#         random.seed(1)
-#         self.transform = transform
-#         self.infer = infer
-#         self.val_img_list = os.listdir(val_img_dir)
-#         random.shuffle(self.val_img_list)
-#         self.val_img_list = self.val_img_list[: int(len(self.val_img_list) * use_rate)]
-#         self.val_msk_list = self.val_img_list
-#         self.val_img_dir = val_img_dir
-#         self.val_msk_dir = val_msk_dir
-
-#     def __len__(self):
-#         return len(self.val_img_list)
-
-#     def __getitem__(self, idx):
-#         image = cv2.imread(self.val_img_dir + self.val_img_list[idx])
-
-#         # print(img_path.replace(".","data"))
-#         image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-#         img = cv2.cvtColor(image, cv2.COLOR_RGB2LAB)
-#         clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
-#         img[:, :, 0] = clahe.apply(img[:, :, 0])
-#         img = cv2.cvtColor(img, cv2.COLOR_LAB2RGB)
-#         image = np.asarray(img)
-#         if (image > 1).any():
-#             image = image / 255.0
-#         if self.infer:
-#             if self.transform:
-#                 image = self.transform(image=image)["image"]
-#             return image
-
-#         mask = cv2.imread(self.val_msk_dir + self.val_msk_list[idx], 0)
-#         mask = np.asarray(mask)
-#         # print(mask.max())
-#         # if (mask > 1).any():
-#         mask = mask / 255.0
-#         if self.transform:
-#             augmented = self.transform(image=image, mask=mask)
-#             image = augmented["image"]
-#             mask = augmented["mask"]
-#             # print(image.shape)
-#         return image, mask
 
 
 if __name__ == "__main__":
