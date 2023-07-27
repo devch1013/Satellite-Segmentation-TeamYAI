@@ -27,6 +27,7 @@ if __name__ == "__main__":
         [
             A.RandomCrop(224, 224),
             A.HorizontalFlip(),
+            A.augmentations.transforms.CLAHE(clip_limit=4.0, tile_grid_size=(8, 8)),
             # A.RandomBrightnessContrast(brightness_limit=(-0.4, 0.4), contrast_limit=(-0.4, 0.4)),
             # A.RandomGamma(gamma_limit=(90, 110)),
             A.RandomRotate90(p=0.7),

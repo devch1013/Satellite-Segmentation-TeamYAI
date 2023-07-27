@@ -1,4 +1,4 @@
-model-name: MAResUnet_clahe
+model-name: MAResUnet_clahe_cont
 device: cuda
 model:
   num_channels: 3
@@ -19,7 +19,7 @@ train:
     weight: [1,5,5]
   optimizer:
     name: adamw
-    learning-rate: 0.0001
+    learning-rate: 0.0000001
     args:
       betas: [0.9, 0.999]
   lr_scheduler:

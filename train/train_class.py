@@ -228,6 +228,7 @@ class Trainer:
                 self.writer.add_image("inter_result_output", data_img, current_epoch)
                 self.writer.add_image("inter_result_mask", mask_img, current_epoch)
         if self.save_ckpt:
+            ## Validation score 가장 높은 5개 저장
             current_time = datetime.datetime.now() + datetime.timedelta(hours=9)
             current_time = current_time.strftime("%m-%d-%H:%M")
             model_name = self.cfg["model-name"]
