@@ -136,7 +136,6 @@ class Trainer:
             self.optimizer.zero_grad()
             # print(data)
             output = self.model(data)
-            output = F.sigmoid(output)
             target = target.unsqueeze(dim=1)
 
             loss, losses = self._get_loss(output=output, target=target)
@@ -175,7 +174,6 @@ class Trainer:
                         self.device, dtype=torch.float32
                     )
                     outputs = self.model(data)
-                    outputs = F.sigmoid(outputs)
 
                     # output = output.squeeze(dim=1)
                     target = target.unsqueeze(dim=1)
@@ -231,6 +229,7 @@ class Trainer:
                 self.writer.add_image("inter_result_output", data_img, current_epoch)
                 self.writer.add_image("inter_result_mask", mask_img, current_epoch)
         if self.save_ckpt:
+            ## Validation score 가장 높은 5개 저장
             current_time = datetime.datetime.now() + datetime.timedelta(hours=9)
             current_time = current_time.strftime("%m-%d-%H:%M")
             model_name = self.cfg["model-name"]
