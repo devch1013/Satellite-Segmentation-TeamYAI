@@ -10,6 +10,7 @@ import numpy as np
 import albumentations as A
 from albumentations.pytorch import ToTensorV2
 import os
+import random
 
 
 class MyDataLoader:
@@ -157,11 +158,15 @@ class ValidateDataset(Dataset):
         val_msk_dir="data/val_mask/",
         infer=False,
         transform=None,
+        use_rate=1,
     ):
+        random.seed(1)
         self.transform = transform
         self.infer = infer
         self.val_img_list = os.listdir(val_img_dir)
-        self.val_msk_list = os.listdir(val_msk_dir)
+        random.shuffle(self.val_img_list)
+        self.val_img_list = self.val_img_list[: int(len(self.val_img_list) * use_rate)]
+        self.val_msk_list = self.val_img_list
         self.val_img_dir = val_img_dir
         self.val_msk_dir = val_msk_dir
 
@@ -179,7 +184,6 @@ class ValidateDataset(Dataset):
             return image
 
         mask = cv2.imread(self.val_msk_dir + self.val_msk_list[idx], 0)
-
         if self.transform:
             augmented = self.transform(image=image, mask=mask / 255)
             image = augmented["image"]

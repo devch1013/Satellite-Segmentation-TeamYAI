@@ -15,6 +15,7 @@ from utils.dataloader import MyDataLoader
 from models.layers import VIT
 import torch.nn.functional as F
 from utils.losses.diceLoss import dice_coeff_batch
+import cv2
 
 # from models.CRF.crf_model import crf
 
@@ -263,28 +264,33 @@ class Trainer:
                 data, target = data.to(self.device, dtype=torch.float32), target.to(
                     self.device, dtype=torch.float32
                 )
-                outputs = self.model(data)
-
-                # output = output.squeeze(dim=1)
+                output = self.model(data)
+                output = F.interpolate(output, (224, 224), mode="bilinear")
+                # output = F.interpolate(output, (data.shape[1], data.shape[0]), mode="bilinear")
                 target = target.unsqueeze(dim=1)
-                val_loss, val_losses = self._get_loss(output=outputs, target=target)
-                # val_losses = self.criterion(output, target)
-                # if type(val_losses) == dict:
-                #     val_loss = sum(val_losses.values())
-                # else:
-                #     val_loss = val_losses
-                total_val_loss += val_loss.item()
-                # if self.multi_output:
-                # outputs = list(outputs)
-                # outputs.append(outputs[0])
-                # outputs.append(outputs[0])
-                output = torch.concat(outputs, dim=1).mean(dim=1).unsqueeze(1)
-                # output = outputs[4]
-
-                # output = crf(output)
-                total_dice_score += dice_coeff_batch(
-                    input=output2mask(output, threshold=0.5), target=target.unsqueeze(dim=1)
+                # val_loss, val_losses = self._get_loss(output=outputs, target=target)
+                # total_val_loss += val_loss.item()
+                # output = torch.concat(outputs, dim=1).mean(dim=1).unsqueeze(1)
+                cv2.imwrite(
+                    "outputmask.png",
+                    output2mask(output, threshold=0.5)[0].squeeze().cpu().numpy() * 255,
+                )
+                cv2.imwrite(
+                    "target.png",
+                    target[0].squeeze().cpu().numpy() * 255,
+                )
+                print(data.shape)
+                cv2.imwrite(
+                    "input.png",
+                    data[0].permute(1, 2, 0).cpu().numpy() * 255,
+                )
+                # print(output.shape)
+                # print(target.shape)
+                dice = dice_coeff_batch(
+                    input=output2mask(output, threshold=0.5), target=target
                 ).item()
+                print(dice)
+                total_dice_score += dice
                 # break
         print("final dice loss", total_dice_score / len(self.val_dataloader))
 

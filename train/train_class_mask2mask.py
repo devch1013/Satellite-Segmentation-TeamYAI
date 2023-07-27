@@ -182,6 +182,7 @@ class Trainer:
                     data, target = data.to(self.device, dtype=torch.float32), target.to(
                         self.device, dtype=torch.float32
                     )
+                    # print(data.shape)
                     target = target.unsqueeze(dim=1)
                     cls_target = torch.any(torch.any(target, 2), 2).squeeze().float()
                     outputs, val_cls = self.model(data)

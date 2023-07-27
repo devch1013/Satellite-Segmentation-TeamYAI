@@ -1,4 +1,4 @@
-model-name: deeplabv3plus_resnet101
+model-name: deeplabv3plus_resnet101_cont
 device: cuda
 model:
   # n_channels: 3
@@ -22,7 +22,7 @@ train:
     weight: [1,1,1]
   optimizer:
     name: adamw
-    learning-rate: 0.0001
+    learning-rate: 0.000001
     args:
       betas: [0.9, 0.999]
   lr_scheduler:
